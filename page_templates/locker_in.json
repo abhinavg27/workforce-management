@@ -1,0 +1,305 @@
+{
+  "title": "Locker_AITest_S-OUT_{operation_date}",
+  "properties": {
+    "operation_date": "yyyyMMdd",
+    "display_date": "dd MMMM yyyy"
+  },
+  "sections": [
+    {
+      "heading": "Operation Overview",
+      "content": [
+        {
+          "type": "table",
+          "style": "border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #003366; font-size: 15px;",
+          "fields": [
+            {
+              "label": "Field",
+              "id": "field_label",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top; width: 30%; font-weight: bold;"
+            },
+            {
+              "label": "Value",
+              "id": "field_value",
+              "style": "border: 1px solid #ddd; background: #fff; vertical-align: top; width: 70%;"
+            },
+            {
+              "label": "Status",
+              "id": "field_status",
+              "style": "border: 1px solid #ddd; background: #fff; vertical-align: top; width: 70%;"
+            }
+          ],
+          "static_values": {
+            "ticket": "S-OUT: SCG-XXXX - [Request][PPM][Locker] Locker S-OUT / 廃止",
+            "operation_pic": "@Ali, Abrar",
+            "operation_buddy": "@Rawat, Megha",
+            "other_attendees": "@Pawar, Nikhil",
+            "approvals_sre": "@Pawar, Nikhil",
+            "approvals_sre_emails": {
+              "@Pawar, Nikhil": "nikhil.pawar@rakuten.com"
+            },
+            "approvals_sre_status": "{status:NOT APPROVED}",
+            "operation_details": "X Locker S-OUT through Rundeck"
+          },
+          "rows": [
+            {
+              "label": "Operation Date and Time",
+              "id": "display_date"
+            },
+            {
+              "label": "Ticket",
+              "id": "ticket"
+            },
+            {
+              "label": "Approvals | SRE",
+              "id": "approvals_sre"
+            },
+            {
+              "label": "Operation PIC",
+              "id": "operation_pic"
+            },
+            {
+              "label": "Operation Buddy",
+              "id": "operation_buddy"
+            },
+            {
+              "label": "Other Attendees",
+              "id": "other_attendees"
+            },
+            {
+              "label": "Operation Overview",
+              "id": "operation_details"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "Operation Manual",
+      "content": [
+        {
+          "type": "table",
+          "style": "border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #ddd; font-size: 15px;",
+          "fields": [
+            {
+              "label": "Task",
+              "id": "preparation_task",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top; font-weight: bold;"
+            },
+            {
+              "label": "Steps",
+              "id": "preparation_steps",
+              "style": "border: 1px solid #ddd; vertical-align: top; background: #f7f7f7; font-weight: bold;"
+            },
+            {
+              "label": "Remarks",
+              "id": "preparation_screenshots",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            },
+            {
+              "label": "STG",
+              "id": "stg_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            },
+            {
+              "label": "PROD",
+              "id": "prod_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            }
+          ],
+          "static_values": {
+            "ticket_comments": "Check for the comments",
+            "ticket_comments_stg_review": "{status:SKIP}",
+            "ticket_comments_prod_review": "{status:NOT YET}",
+            "verify_locker_presence_db": "Login to SWAN\n{expand:title=Shop Verification Query}\n{code:language=sql|borderStyle=solid|theme=RDark|collapse=true}\nselect * from locker_master where locker_id in ('17280M')\n{code}",
+            "verify_locker_presence_db_stg_review": "{status:SKIP}",
+            "verify_locker_presence_db_prod_review": "{status:NOT YET}",
+            "locker_id_exists": "RID with id 17280M exists. We will perform S-OUT via Rundeck."
+          },
+          "rows": [
+            {
+              "label": "Review the ticket comments for any pertinent updates regarding its status.",
+              "id": "ticket_comments"
+            },
+            {
+              "label": "Verify the presence of the locker in the database.",
+              "id": "verify_locker_presence_db"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "style": "border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #ddd; font-size: 15px;",
+          "fields": [
+            {
+              "label": "Task",
+              "id": "execution_task",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top; font-weight: bold;"
+            },
+            {
+              "label": "Steps",
+              "id": "execution_steps",
+              "style": "border: 1px solid #ddd; vertical-align: top; background: #f7f7f7; font-weight: bold;"
+            },
+            {
+              "label": "Remarks",
+              "id": "execution_remarks",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top;"
+            },
+            {
+              "label": "STG",
+              "id": "stg_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            },
+            {
+              "label": "PROD",
+              "id": "prod_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            }
+          ],
+          "static_values": {
+            "execute_s_out": "Login to \nhttp://aspfjob201z.prod.jp.localdomain:4444/rundeck/projects/locker/pickup-jobs/project/locker-pickup-jb/job/show/7c897d98-e69e-457f-8fc2-c19897306194 for SIN/SOUT operation\n\nUpdate below fields as shown in screenshot\n- db-password : leave blank as value is auto populated.\n- locker-id:\n\n17280M\n\n      - locker-operation : select S-OUT\n      - Node : Uncheck\n\nClick on \"Run Job Now\" button",
+            "execute_s_out_stg_review": "{status:SKIP}",
+            "execute_s_out_prod_review": "{status:NOT YET}"
+          },
+          "rows": [
+            {
+              "label": "Execute S-OUT",
+              "id": "execute_s_out"
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "style": "border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #ddd; font-size: 15px;",
+          "fields": [
+            {
+              "label": "Verify",
+              "id": "rollback_step",
+              "style": "border: 1px solid #ddd; background: #f7f7; vertical-align: top; font-weight: bold;"
+            },
+            {
+              "label": "Details",
+              "id": "rollback_details",
+              "style": "border: 1px solid #ddd; background: #f7f7f7 vertical-align: top; font-weight: bold;"
+            },
+            {
+              "label": "Remark",
+              "id": "rollback_remark",
+              "style": "border: 1px solid #ddd; background: #f7f7f7 vertical-align: top;"
+            },
+            {
+              "label": "STG",
+              "id": "stg_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            },
+            {
+              "label": "PROD",
+              "id": "prod_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            }
+          ],
+          "static_values": {
+            "vacant_locker_api": "Check the locker is not listed in the vacant list and the prefecture_id is the updated one.\n(How to check vacant API)",
+            "vacant_locker_api_stg_review": "{status:SKIP}",
+            "vacant_locker_api_prod_review": "{status:NOT YET}",
+            "locker_master_data_change": "{expand:title=Locker Data Change}\n{code:language=sql|borderStyle=solid|theme=RDark|collapse=true}\nselect locker_id, prefecture_id from locker_master where locker_id = '17280M'; \n{code}",
+            "locker_master_data_change_stg_review": "{status:SKIP}",
+            "locker_master_data_change_prod_review": "{status:NOT YET}"
+          },
+          "rows": [
+            {
+              "label": "Call vacant locker API to confirm inserted locker info",
+              "id": "vacant_locker_api"
+            },
+            {
+              "label": "Confirm locker data change in locker master data",
+              "id": "locker_master_data_change"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "RollBack",
+      "content": [
+        {
+          "type": "table",
+          "style": "border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #ddd; font-size: 16px;",
+          "fields": [
+            {
+              "label": "Step",
+              "id": "rollback_step",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top; font-weight: bold;"
+            },
+            {
+              "label": "Details",
+              "id": "rollback_details",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top; font-weight: bold;"
+            },
+            {
+              "label": "Remark",
+              "id": "rollback_remark",
+              "style": "border: 1px solid #ddd; background: #f7f7f7; vertical-align: top;"
+            },
+            {
+              "label": "STG",
+              "id": "stg_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            },
+            {
+              "label": "PROD",
+              "id": "prod_review",
+              "style": "border: 1px solid #ddd; background: #f7f7f7;"
+            }
+          ],
+          "static_values": {
+            "connect_target_server": "ssh user@bscglocker101z.prod.cklocal\n\nsudo su logiuser",
+            "connect_target_server_stg_review": "{status:NOT YET}",
+            "connect_target_server_prod_review": "{status:NOT YET}",
+            "connect_to_db": "source /usr/local/logistics/oracle/env/lcker-rxaas.sh\n\nsqlplus lckeruser@\\\"dexb07-s.prod.jp.local:2028/sv_lcker\\\"\n(Locker DB credentials)\n\nREM INSERTING into LCKERUSER.LOCKER_MASTER\n\nSET DEFINE OFF;\n\nSET AUTOCOMMIT OFF;\n\nSHOW AUTOCOMMIT;",
+            "connect_to_db_stg_review": "{status:NOT YET}",
+            "connect_to_db_prod_review": "{status:NOT YET}",
+            "insert_locker_master": "Insert into locker_master using backup CSV\n\n     Select * from locker_master\nConfirm inserted value",
+            "insert_locker_master_stg_review": "{status:NOT YET}",
+            "insert_locker_master_prod_review": "{status:NOT YET}",
+            "insert_vacant_locker": "Insert into vacant_locker using backup CSV\n\nCheck inserted information\n\n      select * from VACANT_LOCKER\nCommit changes\n\ncommit;",
+            "insert_vacant_locker_stg_review": "{status:NOT YET}",
+            "insert_vacant_locker_prod_review": "{status:NOT YET}",
+            "restore_locker_vacant": "Login to SWAN\n\nSelect * from locker_master and select * from VACANT_LOCKER\n\nConfirm data inserted",
+            "restore_locker_vacant_stg_review": "{status:NOT YET}",
+            "restore_locker_vacant_prod_review": "{status:NOT YET}",
+            "vacant_locker_api": "Check the locker is listed in the vacant list and the prefecture_id is the updated one.\n(How to check vacant API)",
+            "vacant_locker_api_stg_review": "{status:NOT YET}",
+            "vacant_locker_api_prod_review": "{status:NOT YET}"
+          },
+          "rows": [
+            {
+              "label": "Connect to target server and configure the environment",
+              "id": "connect_target_server"
+            },
+            {
+              "label": "Connect to the DB",
+              "id": "connect_to_db"
+            },
+            {
+              "label": "Insert into LOCKER_MASTER",
+              "id": "insert_locker_master"
+            },
+            {
+              "label": "Insert into VACANT_LOCKER",
+              "id": "insert_vacant_locker"
+            },
+            {
+              "label": "Restore of LOCKER_MASTER and VACANT_LOCKER table",
+              "id": "restore_locker_vacant"
+            },
+            {
+              "label": "Call vacant locker API to confirm inserted locker info",
+              "id": "vacant_locker_api"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

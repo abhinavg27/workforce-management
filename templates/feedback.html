@@ -1,0 +1,627 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback - Confluence AI{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h2 class="card-title mb-0">
+                        <i class="fas fa-comment-alt"></i> Feedback & Improvement
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Help us improve the AI agent by providing your feedback!</p>
+
+                    <!-- Feedback Form -->
+                    <form id="feedbackForm">
+                        <!-- User Information Section -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="user_name" class="form-label">
+                                    <i class="fas fa-user"></i> Your Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="user_name"
+                                       name="user_name"
+                                       placeholder="Enter your name"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="user_email" class="form-label">
+                                    <i class="fas fa-envelope"></i> Email (Optional)
+                                </label>
+                                <input type="email"
+                                       class="form-control"
+                                       id="user_email"
+                                       name="user_email"
+                                       placeholder="your.email@company.com">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="interaction_id" class="form-label">
+                                <i class="fas fa-hashtag"></i> Page/Interaction ID (Optional)
+                            </label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="interaction_id"
+                                   name="interaction_id"
+                                   placeholder="Enter the ID of the specific page you're giving feedback about">
+                            <div class="form-text">
+                                If you're providing feedback about a specific page generation, enter the page title or ID.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="rating" class="form-label">
+                                <i class="fas fa-star"></i> Overall Rating <span class="text-danger">*</span>
+                            </label>
+                            <div class="rating-container">
+                                <div class="btn-group" role="group" aria-label="Rating">
+                                    <input type="radio" class="btn-check" name="rating" id="rating1" value="1" required>
+                                    <label class="btn btn-outline-danger" for="rating1">1 ⭐</label>
+
+                                    <input type="radio" class="btn-check" name="rating" id="rating2" value="2">
+                                    <label class="btn btn-outline-warning" for="rating2">2 ⭐</label>
+
+                                    <input type="radio" class="btn-check" name="rating" id="rating3" value="3">
+                                    <label class="btn btn-outline-secondary" for="rating3">3 ⭐</label>
+
+                                    <input type="radio" class="btn-check" name="rating" id="rating4" value="4">
+                                    <label class="btn btn-outline-primary" for="rating4">4 ⭐</label>
+
+                                    <input type="radio" class="btn-check" name="rating" id="rating5" value="5">
+                                    <label class="btn btn-outline-success" for="rating5">5 ⭐</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Ratings -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="content_quality" class="form-label">
+                                    <i class="fas fa-file-alt"></i> Content Quality
+                                </label>
+                                <select class="form-select" id="content_quality" name="content_quality">
+                                    <option value="5">Excellent</option>
+                                    <option value="4">Good</option>
+                                    <option value="3" selected>Average</option>
+                                    <option value="2">Poor</option>
+                                    <option value="1">Very Poor</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="formatting" class="form-label">
+                                    <i class="fas fa-paint-brush"></i> Formatting
+                                </label>
+                                <select class="form-select" id="formatting" name="formatting">
+                                    <option value="5">Excellent</option>
+                                    <option value="4">Good</option>
+                                    <option value="3" selected>Average</option>
+                                    <option value="2">Poor</option>
+                                    <option value="1">Very Poor</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="accuracy" class="form-label">
+                                    <i class="fas fa-bullseye"></i> Accuracy
+                                </label>
+                                <select class="form-select" id="accuracy" name="accuracy">
+                                    <option value="5">Excellent</option>
+                                    <option value="4">Good</option>
+                                    <option value="3" selected>Average</option>
+                                    <option value="2">Poor</option>
+                                    <option value="1">Very Poor</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="completeness" class="form-label">
+                                    <i class="fas fa-check-double"></i> Completeness
+                                </label>
+                                <select class="form-select" id="completeness" name="completeness">
+                                    <option value="5">Excellent</option>
+                                    <option value="4">Good</option>
+                                    <option value="3" selected>Average</option>
+                                    <option value="2">Poor</option>
+                                    <option value="1">Very Poor</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="comments" class="form-label">
+                                <i class="fas fa-comment"></i> Comments & Suggestions
+                            </label>
+                            <textarea class="form-control"
+                                      id="comments"
+                                      name="comments"
+                                      rows="4"
+                                      placeholder="Please share your thoughts, suggestions, or any issues you encountered..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="feature_requests" class="form-label">
+                                <i class="fas fa-lightbulb"></i> Feature Requests
+                            </label>
+                            <textarea class="form-control"
+                                      id="feature_requests"
+                                      name="feature_requests"
+                                      rows="3"
+                                      placeholder="What new features would you like to see?"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="contact_me" name="contact_me">
+                                <label class="form-check-label" for="contact_me">
+                                    I'm willing to be contacted for follow-up questions
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-paper-plane"></i> Submit Feedback
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Feedback Result -->
+                    <div id="feedback-result" class="mt-4" style="display: none;">
+                        <!-- Result will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Feedback Summary -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar"></i> Feedback Analytics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Statistics Summary - Fixed Version -->
+                    <div class="row text-center mb-4" id="feedback-stats">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-primary" id="avg-rating">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </h4>
+                                <p class="mb-0">Average Rating</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-success" id="satisfaction-rate">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </h4>
+                                <p class="mb-0">Satisfaction Rate</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-info" id="total-feedback">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </h4>
+                                <p class="mb-0">Total Feedback</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <h4 class="text-warning" id="recent-count">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </h4>
+                                <p class="mb-0">This Week</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Feedback Providers -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6><i class="fas fa-trophy"></i> Top Feedback Contributors</h6>
+                            <div id="top-contributors">
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Loading contributors...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Feedback -->
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history"></i> Recent Feedback
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshFeedback()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Recent Feedback List -->
+                    <div id="recent-feedback-list">
+                        <div class="text-center text-muted" id="loading-feedback">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading recent feedback...</p>
+                        </div>
+                    </div>
+
+                    <!-- Load More Button -->
+                    <div class="text-center mt-3" id="load-more-container" style="display: none;">
+                        <button class="btn btn-outline-primary" onclick="loadMoreFeedback()">
+                            <i class="fas fa-plus"></i> Load More Feedback
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // Global variables
+        let currentFeedbackLimit = 5;
+        let totalFeedbackCount = 0;
+
+        // Load feedback data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Feedback page loaded, initializing...');
+            loadFeedbackStats();
+            loadRecentFeedback();
+        });
+
+        function loadFeedbackStats() {
+            console.log('📊 Loading feedback statistics...');
+
+            fetch('/api/feedback/stats')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.statistics) {
+                        const stats = data.statistics;
+
+                        // Update statistics display
+                        document.getElementById('avg-rating').textContent = stats.average_rating || '0';
+                        document.getElementById('satisfaction-rate').textContent = (stats.satisfaction_rate || 0) + '%';
+                        document.getElementById('total-feedback').textContent = stats.total_feedback || '0';
+                        document.getElementById('recent-count').textContent = stats.recent_feedback_count || '0';
+
+                        // Update top contributors
+                        updateTopContributors(stats.top_feedback_providers || []);
+
+                        totalFeedbackCount = stats.total_feedback || 0;
+
+                        console.log('✅ Feedback statistics loaded:', stats);
+                    } else {
+                        console.warn('⚠️ No feedback statistics available');
+                        setDefaultStats();
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load feedback stats:', error);
+                    setDefaultStats();
+                });
+        }
+
+        function setDefaultStats() {
+            document.getElementById('avg-rating').textContent = '0';
+            document.getElementById('satisfaction-rate').textContent = '0%';
+            document.getElementById('total-feedback').textContent = '0';
+            document.getElementById('recent-count').textContent = '0';
+
+            document.getElementById('top-contributors').innerHTML = `
+        <div class="text-center text-muted">
+            <i class="fas fa-users fa-2x mb-2"></i>
+            <p>No contributors yet. Be the first to provide feedback!</p>
+        </div>
+    `;
+        }
+
+        function updateTopContributors(contributors) {
+            const container = document.getElementById('top-contributors');
+
+            if (contributors.length === 0) {
+                container.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-users fa-2x mb-2"></i>
+                <p>No contributors yet. Be the first to provide feedback!</p>
+            </div>
+        `;
+                return;
+            }
+
+            const contributorsHtml = contributors.map((contributor, index) => `
+        <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+            <div>
+                <span class="badge bg-${index === 0 ? 'warning' : index === 1 ? 'secondary' : 'success'} me-2">
+                    ${index + 1}
+                </span>
+                <strong>${escapeHtml(contributor.user_name)}</strong>
+            </div>
+            <div>
+                <span class="badge bg-primary">${contributor.feedback_count} feedback</span>
+                <span class="badge bg-info">${contributor.average_rating}⭐ avg</span>
+            </div>
+        </div>
+    `).join('');
+
+            container.innerHTML = contributorsHtml;
+        }
+
+        function loadRecentFeedback() {
+            console.log('📝 Loading recent feedback...');
+
+            fetch(`/api/feedback/recent?limit=${currentFeedbackLimit}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const listContainer = document.getElementById('recent-feedback-list');
+                    const loadMoreContainer = document.getElementById('load-more-container');
+
+                    if (data.success && data.feedback && data.feedback.length > 0) {
+                        // Build feedback list HTML
+                        const feedbackHtml = data.feedback.map(feedback => `
+                    <div class="card mb-3 feedback-item">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-user text-primary"></i>
+                                        <strong>${escapeHtml(feedback.user_name)}</strong>
+                                        ${feedback.user_email ? `<small class="text-muted">(${escapeHtml(feedback.user_email)})</small>` : ''}
+                                    </h6>
+                                    <div class="mb-2">
+                                        ${generateStarRating(feedback.rating)}
+                                        <span class="ms-2 badge bg-primary">${feedback.rating}/5</span>
+                                        ${feedback.operation_type ? `<span class="ms-1 badge bg-secondary">${escapeHtml(feedback.operation_type)}</span>` : ''}
+                                    </div>
+                                    ${feedback.comments ? `
+                                        <div class="mb-2">
+                                            <small class="text-muted"><i class="fas fa-quote-left"></i> Comments:</small>
+                                            <p class="card-text mb-1">${escapeHtml(feedback.comments)}</p>
+                                        </div>
+                                    ` : ''}
+                                    ${feedback.feature_requests ? `
+                                        <div class="mb-2">
+                                            <small class="text-muted"><i class="fas fa-lightbulb"></i> Feature Requests:</small>
+                                            <p class="card-text mb-1 text-info">${escapeHtml(feedback.feature_requests)}</p>
+                                        </div>
+                                    ` : ''}
+                                    ${feedback.interaction_id ? `
+                                        <small class="text-muted">
+                                            <i class="fas fa-hashtag"></i> ID: ${escapeHtml(feedback.interaction_id)}
+                                        </small>
+                                    ` : ''}
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock"></i> ${feedback.time_ago || 'Recently'}
+                                    </small>
+                                    ${feedback.contact_me ? '<br><small class="badge bg-info">Willing to be contacted</small>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                        listContainer.innerHTML = feedbackHtml;
+
+                        // Show/hide load more button
+                        if (data.feedback.length >= currentFeedbackLimit && data.feedback.length < totalFeedbackCount) {
+                            loadMoreContainer.style.display = 'block';
+                        } else {
+                            loadMoreContainer.style.display = 'none';
+                        }
+
+                        console.log('✅ Recent feedback loaded:', data.feedback.length, 'items');
+
+                    } else {
+                        // No feedback available
+                        listContainer.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-comment-slash fa-3x mb-3"></i>
+                        <h5>No feedback received yet</h5>
+                        <p>Be the first to share your thoughts and help us improve!</p>
+                    </div>
+                `;
+                        loadMoreContainer.style.display = 'none';
+                        console.log('ℹ️ No feedback data available');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load recent feedback:', error);
+                    document.getElementById('recent-feedback-list').innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Unable to load recent feedback.
+                    <button class="btn btn-sm btn-outline-warning ms-2" onclick="loadRecentFeedback()">
+                        <i class="fas fa-retry"></i> Try Again
+                    </button>
+                </div>
+            `;
+                });
+        }
+
+        function generateStarRating(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    stars += '<i class="fas fa-star text-warning"></i>';
+                } else {
+                    stars += '<i class="far fa-star text-muted"></i>';
+                }
+            }
+            return stars;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function refreshFeedback() {
+            console.log('🔄 Refreshing feedback data...');
+            currentFeedbackLimit = 5; // Reset to initial limit
+            loadFeedbackStats();
+            loadRecentFeedback();
+        }
+
+        function loadMoreFeedback() {
+            currentFeedbackLimit += 10; // Load 10 more items
+            loadRecentFeedback();
+        }
+
+        // Enhanced form submission with validation
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const feedbackData = {
+                user_name: formData.get('user_name'),
+                user_email: formData.get('user_email'),
+                interaction_id: formData.get('interaction_id'),
+                rating: parseInt(formData.get('rating')),
+                comments: formData.get('comments'),
+                feature_requests: formData.get('feature_requests'),
+                content_quality: parseInt(formData.get('content_quality')),
+                formatting: parseInt(formData.get('formatting')),
+                accuracy: parseInt(formData.get('accuracy')),
+                completeness: parseInt(formData.get('completeness')),
+                contact_me: formData.get('contact_me') === 'on',
+                user_id: 'user_' + Date.now(),
+                timestamp: new Date().toISOString()
+            };
+
+            // Validate required fields
+            if (!feedbackData.user_name || !feedbackData.user_name.trim()) {
+                alert('Please enter your name.');
+                document.getElementById('user_name').focus();
+                return;
+            }
+
+            if (!feedbackData.rating) {
+                alert('Please provide a rating.');
+                document.querySelector('input[name="rating"]').focus();
+                return;
+            }
+
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            submitBtn.disabled = true;
+
+            console.log('📤 Submitting feedback:', feedbackData);
+
+            fetch('/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(feedbackData)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const resultDiv = document.getElementById('feedback-result');
+
+                    if (data.success) {
+                        resultDiv.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show">
+                    <h5><i class="fas fa-check-circle"></i> Thank You!</h5>
+                    <p class="mb-0">${data.message}</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+
+                        // Reset form
+                        document.getElementById('feedbackForm').reset();
+
+                        // Reload feedback data after a short delay
+                        setTimeout(() => {
+                            loadFeedbackStats();
+                            loadRecentFeedback();
+                        }, 1000);
+
+                        console.log('✅ Feedback submitted successfully');
+
+                    } else {
+                        resultDiv.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show">
+                    <h5><i class="fas fa-exclamation-circle"></i> Error</h5>
+                    <p class="mb-0">${data.error}</p>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+                        console.error('❌ Feedback submission failed:', data.error);
+                    }
+
+                    resultDiv.style.display = 'block';
+                    resultDiv.scrollIntoView({ behavior: 'smooth' });
+                })
+                .catch(error => {
+                    console.error('❌ Network error:', error);
+                    const resultDiv = document.getElementById('feedback-result');
+                    resultDiv.innerHTML = `
+            <div class="alert alert-danger alert-dismissible fade show">
+                <h5><i class="fas fa-exclamation-circle"></i> Network Error</h5>
+                <p class="mb-0">Unable to submit feedback. Please check your connection and try again.</p>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+                    resultDiv.style.display = 'block';
+                })
+                .finally(() => {
+                    // Restore button state
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+        });
+
+        // Auto-refresh feedback every 30 seconds
+        setInterval(() => {
+            console.log('🔄 Auto-refreshing feedback stats...');
+            loadFeedbackStats();
+        }, 30000);
+
+        console.log('📚 Feedback page JavaScript loaded successfully');
+    </script>
+{% endblock %}

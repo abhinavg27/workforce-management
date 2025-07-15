@@ -1,0 +1,672 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Confluence AI{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-chart-dashboard"></i> AI Agent Dashboard</h1>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="manualRefresh()">
+                        <i class="fas fa-sync-alt"></i> Refresh Now
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary d-none" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+                        <i class="fas fa-pause"></i> Auto-Refresh: ON
+                    </button>
+                    <a href="/debug/database_state" target="_blank" class="btn btn-outline-info">
+                        <i class="fas fa-database"></i> Debug DB
+                    </a>
+                    <button type="button" class="btn btn-outline-warning" onclick="clearOldData()">
+                        <i class="fas fa-broom"></i> Clear Old Data
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="resetDashboard()" title="⚠️ This will delete ALL data">
+                        <i class="fas fa-trash"></i> Reset All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info card explaining metrics -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle"></i>
+                <strong>Dashboard Metrics Explained:</strong>
+                <ul class="mb-0 mt-2">
+                    <li><strong>Avg. Generation Time:</strong> Average time to generate a Confluence page (in seconds)</li>
+                    <li><strong>Pages Created:</strong> Total number of successfully created pages</li>
+                    <li><strong>Success Rate:</strong> Percentage of successful page generations</li>
+                    <li><strong>AI Calls Made:</strong> Total number of AI processing requests</li>
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Stats Cards with enhanced colors -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-gradient-primary text-white shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-alt fa-2x mb-2"></i>
+                    <h3 class="card-title" id="total-pages">0</h3>
+                    <p class="card-text mb-1"><strong>Pages Created</strong></p>
+                    <small id="success-rate-small" class="opacity-75">0% success rate</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-success text-white shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h3 class="card-title" id="success-rate">0%</h3>
+                    <p class="card-text mb-1"><strong>Success Rate</strong></p>
+                    <small id="total-attempts-small" class="opacity-75">0 total attempts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-info text-white shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h3 class="card-title" id="avg-time">0s</h3>
+                    <p class="card-text mb-1"><strong>Avg. Generation Time</strong></p>
+                    <small id="recent-avg-time" class="opacity-75">Recent: 0s</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-gradient-warning text-dark shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-robot fa-2x mb-2"></i>
+                    <h3 class="card-title" id="ai-calls">0</h3>
+                    <p class="card-text mb-1"><strong>AI Calls Made</strong></p>
+                    <small id="today-pages" class="opacity-75">Today: 0</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary bg-light shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-lg text-primary mb-2"></i>
+                    <h4 class="card-title text-primary" id="unique-users">0</h4>
+                    <p class="card-text text-dark"><strong>Unique Users</strong></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger bg-light shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-lg text-danger mb-2"></i>
+                    <h4 class="card-title text-danger" id="error-rate">0%</h4>
+                    <p class="card-text text-dark"><strong>Error Rate</strong></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success bg-light shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-week fa-lg text-success mb-2"></i>
+                    <h4 class="card-title text-success" id="recent-pages">0</h4>
+                    <p class="card-text text-dark"><strong>This Week</strong></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info bg-light shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-sync-alt fa-lg text-info mb-2"></i>
+                    <h4 class="card-title text-info" id="last-updated">Never</h4>
+                    <p class="card-text text-dark"><strong>Last Updated</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-history"></i> Recent Activity
+                    </h5>
+                    <div>
+                        <span class="badge bg-secondary" id="activity-count">0 records</span>
+                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="loadRecentActivity()">
+                            <i class="fas fa-refresh"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="activity-table">
+                            <thead class="table-dark">
+                            <tr>
+                                <th>Time</th>
+                                <th>Operation</th>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>User</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Loading activity data...</p>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let refreshInterval;
+        let isAutoRefreshEnabled = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📊 Dashboard loaded - initializing real-time updates');
+            loadDashboardData();
+            loadRecentActivity();
+            startAutoRefresh();
+        });
+
+        // 🔧 NEW: Time formatting functions
+        function formatTime(seconds) {
+            if (!seconds || seconds === 0) return "0s";
+
+            if (seconds < 1) {
+                return `${(seconds * 1000).toFixed(0)}ms`;
+            } else if (seconds < 60) {
+                return `${seconds.toFixed(1)}s`;
+            } else if (seconds < 3600) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = (seconds % 60).toFixed(0);
+                return `${minutes}m ${remainingSeconds}s`;
+            } else {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                return `${hours}h ${minutes}m`;
+            }
+        }
+
+        function formatTimeWithTooltip(seconds) {
+            const formatted = formatTime(seconds);
+            const tooltip = `${seconds.toFixed(2)} seconds`;
+            return { formatted, tooltip };
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+
+            refreshInterval = setInterval(() => {
+                if (isAutoRefreshEnabled) {
+                    console.log('🔄 Auto-refreshing dashboard data...');
+                    loadDashboardData();
+                    loadRecentActivity();
+                }
+            }, 5000); // Refresh every 5 seconds
+
+            console.log('✅ Auto-refresh started (every 5 seconds)');
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+            console.log('⏹️ Auto-refresh stopped');
+        }
+
+        function manualRefresh() {
+            console.log('🔄 Manual refresh triggered');
+            showRefreshIndicator();
+            loadDashboardData();
+            loadRecentActivity();
+        }
+
+        function toggleAutoRefresh() {
+            isAutoRefreshEnabled = !isAutoRefreshEnabled;
+            const toggleBtn = document.getElementById('autoRefreshToggle');
+
+            if (isAutoRefreshEnabled) {
+                toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Auto-Refresh: ON';
+                toggleBtn.className = 'btn btn-outline-secondary';
+                startAutoRefresh();
+            } else {
+                toggleBtn.innerHTML = '<i class="fas fa-play"></i> Auto-Refresh: OFF';
+                toggleBtn.className = 'btn btn-outline-warning';
+                stopAutoRefresh();
+            }
+        }
+
+        function showRefreshIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'alert alert-info alert-dismissible fade show position-fixed';
+            indicator.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 250px;';
+            indicator.innerHTML = `
+                <i class="fas fa-sync-alt fa-spin"></i> Refreshing dashboard data...
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(indicator);
+
+            setTimeout(() => {
+                if (indicator.parentNode) {
+                    indicator.remove();
+                }
+            }, 2000);
+        }
+
+        // 🔧 ENHANCED: loadDashboardData with better time formatting
+        function loadDashboardData() {
+            const timestamp = new Date().getTime();
+
+            fetch(`/api/dashboard/stats?_t=${timestamp}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📊 Dashboard stats loaded:', data);
+
+                    if (data.success && data.statistics) {
+                        const stats = data.statistics;
+
+                        // 🔧 FORMAT TIME VALUES PROPERLY
+                        const avgTimeFormatted = formatTime(stats.avg_generation_time || 0);
+                        const recentTimeFormatted = formatTime(stats.recent_avg_time_24h || 0);
+
+                        // Update main stats with better formatting
+                        updateStatWithAnimation('total-pages', stats.total_pages || 0);
+                        updateStatWithAnimation('success-rate', (stats.success_rate || 0).toFixed(1) + '%');
+                        updateStatWithAnimation('avg-time', avgTimeFormatted);
+                        updateStatWithAnimation('ai-calls', stats.ai_calls_made || 0);
+
+                        // 🔧 ADD TOOLTIPS FOR TIME FIELDS
+                        const avgTimeElement = document.getElementById('avg-time');
+                        if (avgTimeElement && stats.avg_generation_time) {
+                            avgTimeElement.title = `Exact: ${stats.avg_generation_time.toFixed(2)} seconds`;
+                        }
+
+                        // Update additional stats
+                        updateStatWithAnimation('unique-users', stats.unique_users || 0);
+                        updateStatWithAnimation('error-rate', (stats.error_rate || 0).toFixed(1) + '%');
+                        updateStatWithAnimation('recent-pages', stats.recent_pages_week || 0);
+
+                        // 🔧 UPDATE SMALL TEXT WITH BETTER FORMATTING
+                        document.getElementById('success-rate-small').textContent =
+                            `${(stats.success_rate || 0).toFixed(1)}% of ${stats.total_attempts || 0} attempts`;
+                        document.getElementById('total-attempts-small').textContent =
+                            `${stats.failed_attempts || 0} failed, ${stats.total_pages || 0} successful`;
+
+                        const recentTimeElement = document.getElementById('recent-avg-time');
+                        recentTimeElement.textContent = `Recent 24h: ${recentTimeFormatted}`;
+                        if (stats.recent_avg_time_24h) {
+                            recentTimeElement.title = `Exact: ${stats.recent_avg_time_24h.toFixed(2)} seconds`;
+                        }
+
+                        document.getElementById('today-pages').textContent = `Today: ${stats.today_pages || 0} pages`;
+
+                        // 🔧 UPDATE LAST UPDATED WITH BETTER FORMATTING
+                        if (stats.last_updated) {
+                            const updateTime = new Date(stats.last_updated);
+                            const now = new Date();
+                            const diffSeconds = (now - updateTime) / 1000;
+
+                            let timeAgoText;
+                            if (diffSeconds < 60) {
+                                timeAgoText = `${Math.floor(diffSeconds)}s ago`;
+                            } else if (diffSeconds < 3600) {
+                                timeAgoText = `${Math.floor(diffSeconds / 60)}m ago`;
+                            } else {
+                                timeAgoText = updateTime.toLocaleTimeString();
+                            }
+
+                            document.getElementById('last-updated').textContent = timeAgoText;
+                            document.getElementById('last-updated').title = updateTime.toLocaleString();
+                        }
+
+                        console.log('✅ Dashboard stats updated successfully');
+                    } else {
+                        console.warn('⚠️ No dashboard statistics available');
+                        setDefaultStats();
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load dashboard stats:', error);
+                    showErrorMessage('Failed to load dashboard statistics');
+                    setDefaultStats();
+                });
+        }
+
+        function loadRecentActivity() {
+            const timestamp = new Date().getTime();
+
+            fetch(`/api/dashboard/activity?limit=15&_t=${timestamp}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📊 Recent activity loaded:', data);
+
+                    const tbody = document.querySelector('#activity-table tbody');
+                    const activityCount = document.getElementById('activity-count');
+
+                    if (data.success && data.activity && data.activity.length > 0) {
+                        const activityHtml = data.activity.map((activity, index) => `
+                            <tr class="activity-row ${activity.success ? '' : 'table-warning'}" style="animation-delay: ${index * 0.05}s">
+                                <td>
+                                    <span class="badge bg-light text-dark" title="${activity.timestamp}">
+                                        ${activity.time_ago}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">${activity.operation_type}</span>
+                                    ${activity.template_file ? `<br><small class="text-muted">${activity.template_file}</small>` : ''}
+                                </td>
+                                <td class="text-truncate" style="max-width: 200px;" title="${activity.page_title}">
+                                    <strong>${activity.page_title}</strong>
+                                    ${activity.space_key ? `<br><small class="text-muted">${activity.space_key}</small>` : ''}
+                                </td>
+                                <td>
+                                    <span class="badge ${activity.success ? 'bg-success' : 'bg-danger'}">
+                                        <i class="fas ${activity.success ? 'fa-check' : 'fa-times'}"></i>
+                                        ${activity.success ? 'Success' : 'Failed'}
+                                    </span>
+                                    ${!activity.success && activity.error_message ? `<br><small class="text-danger">${activity.error_message}</small>` : ''}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">${activity.duration}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">${activity.user_id}</small>
+                                    ${activity.source ? `<br><span class="badge bg-secondary">${activity.source}</span>` : ''}
+                                </td>
+                                <td>
+                                    ${activity.page_url && activity.success ? `
+                                        <a href="${activity.page_url}" target="_blank" class="btn btn-sm btn-outline-primary" title="Open page">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    ` : `
+                                        <button class="btn btn-sm btn-outline-secondary" disabled title="No URL available">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    `}
+                                </td>
+                            </tr>
+                        `).join('');
+
+                        tbody.innerHTML = activityHtml;
+                        activityCount.textContent = `${data.activity.length} records`;
+                        activityCount.className = 'badge bg-success';
+
+                        console.log('✅ Recent activity updated successfully');
+                    } else {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-info-circle fa-2x mb-2"></i><br>
+                                    No recent activity found.<br>
+                                    <small>Generate some pages to see data here!</small>
+                                    <br><br>
+                                    <a href="/debug/database_state" target="_blank" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-database"></i> Check Database
+                                    </a>
+                                </td>
+                            </tr>
+                        `;
+                        activityCount.textContent = '0 records';
+                        activityCount.className = 'badge bg-warning';
+                        console.log('ℹ️ No recent activity data available');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load recent activity:', error);
+                    document.querySelector('#activity-table tbody').innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-danger py-4">
+                                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>
+                                Failed to load activity data<br>
+                                <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadRecentActivity()">
+                                    <i class="fas fa-retry"></i> Try Again
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+
+                    const activityCount = document.getElementById('activity-count');
+                    activityCount.textContent = 'Error';
+                    activityCount.className = 'badge bg-danger';
+                });
+        }
+
+        // Add these functions to your dashboard.html JavaScript section:
+
+        function clearOldData() {
+            if (confirm('Clear old data (keep last 24 hours)? This will make averages more accurate.')) {
+                fetch('/debug/clear_old_data')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(`✅ ${data.message}\n\nRecords deleted: ${data.records_deleted}\nRemaining records: ${data.new_record_count}`);
+                            manualRefresh(); // Refresh dashboard
+                        } else {
+                            alert(`❌ Error: ${data.error}`);
+                        }
+                    })
+                    .catch(error => {
+                        alert(`❌ Network error: ${error.message}`);
+                    });
+            }
+        }
+
+        function resetDashboard() {
+            if (confirm('⚠️ WARNING: This will DELETE ALL dashboard data permanently!\n\nAre you sure you want to continue?')) {
+                if (confirm('⚠️ FINAL WARNING: This action cannot be undone!\n\nClick OK to permanently delete all data.')) {
+                    fetch('/debug/reset_dashboard_completely')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(`✅ ${data.message}\n\n${data.warning}`);
+                                manualRefresh(); // Refresh dashboard
+                            } else {
+                                alert(`❌ Error: ${data.error}`);
+                            }
+                        })
+                        .catch(error => {
+                            alert(`❌ Network error: ${error.message}`);
+                        });
+                }
+            }
+        }
+
+        function updateStatWithAnimation(elementId, newValue) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const currentValue = element.textContent;
+                if (currentValue !== newValue.toString()) {
+                    element.classList.add('stat-updating');
+                    element.textContent = newValue;
+
+                    setTimeout(() => {
+                        element.classList.remove('stat-updating');
+                    }, 500);
+                }
+            }
+        }
+
+        function setDefaultStats() {
+            document.getElementById('total-pages').textContent = '0';
+            document.getElementById('success-rate').textContent = '0%';
+            document.getElementById('avg-time').textContent = '0s';
+            document.getElementById('ai-calls').textContent = '0';
+            document.getElementById('unique-users').textContent = '0';
+            document.getElementById('error-rate').textContent = '0%';
+            document.getElementById('recent-pages').textContent = '0';
+        }
+
+        function showErrorMessage(message) {
+            const errorAlert = document.createElement('div');
+            errorAlert.className = 'alert alert-warning alert-dismissible fade show';
+            errorAlert.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            const container = document.querySelector('.container');
+            if (container) {
+                container.insertBefore(errorAlert, container.firstChild);
+            }
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            stopAutoRefresh();
+        });
+
+        console.log('📊 Enhanced Dashboard JavaScript loaded successfully');
+    </script>
+
+    <!-- 🔧 ENHANCED CSS STYLES -->
+    <style>
+        /* Enhanced gradient backgrounds for better visibility */
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+        }
+
+        .bg-gradient-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+        }
+
+        .bg-gradient-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%) !important;
+        }
+
+        .bg-gradient-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+            color: #212529 !important;
+        }
+
+        .bg-gradient-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #bd2130 100%) !important;
+        }
+
+        /* Card enhancements */
+        .card {
+            border-radius: 15px;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+        }
+
+        /* Text contrast improvements */
+        .text-white {
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .opacity-75 {
+            opacity: 0.85 !important;
+        }
+
+        /* Stat animation enhancement */
+        .stat-updating {
+            animation: statUpdate 0.6s ease-in-out;
+            color: #fff !important;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        @keyframes statUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); text-shadow: 3px 3px 6px rgba(0,0,0,0.7); }
+            100% { transform: scale(1); }
+        }
+
+        /* Activity table improvements */
+        .table-hover tbody tr:hover {
+            background-color: rgba(0,123,255,.1) !important;
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        }
+
+        .activity-row {
+            animation: fadeInUp 0.4s ease-out forwards;
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Badge improvements */
+        .badge {
+            font-size: 0.8em;
+            padding: 0.4em 0.6em;
+            border-radius: 8px;
+        }
+
+        /* Icon improvements */
+        .fa-2x {
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+
+        /* Tooltip styling */
+        [title] {
+            cursor: help;
+        }
+
+        /* Responsive text sizing */
+        @media (max-width: 768px) {
+            .card-title {
+                font-size: 1.5rem;
+            }
+
+            .fa-2x {
+                font-size: 1.5em !important;
+            }
+        }
+
+        /* Loading state improvements */
+        .spinner-border {
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
+        }
+
+        /* Alert improvements */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+{% endblock %}
