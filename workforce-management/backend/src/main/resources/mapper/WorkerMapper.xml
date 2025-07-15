@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wms.optimization.mapper.WorkerMapper">
+    <resultMap id="SkillInfoResultMap" type="com.wms.optimization.entity.SkillInfo">
+        <result property="skillId" column="skill_id" />
+        <result property="skillName" column="skill_name" />
+        <result property="skillLevel" column="skill_level" />
+        <result property="productivity" column="productivity" />
+    </resultMap>
+
+    <resultMap id="ShiftInfoResultMap" type="com.wms.optimization.entity.ShiftInfo">
+        <result property="shiftId" column="shift_id" />
+        <result property="shiftName" column="shift_name" />
+        <result property="startTime" column="start_time" />
+        <result property="endTime" column="end_time" />
+        <result property="dayOfWeek" column="day_of_week" />
+    </resultMap>
+
+    <resultMap id="WorkerResultMap" type="com.wms.optimization.entity.Worker">
+        <id property="workerId" column="worker_id" />
+        <result property="workerName" column="worker_name" />
+        <result property="age" column="age" />
+        <collection property="skills" ofType="com.wms.optimization.entity.SkillInfo" resultMap="SkillInfoResultMap" />
+        <collection property="shifts" ofType="com.wms.optimization.entity.ShiftInfo" resultMap="ShiftInfoResultMap" />
+    </resultMap>
+
+    <select id="selectAllWorkers" resultMap="WorkerResultMap">
+        SELECT worker_id, worker_name, age FROM worker
+    </select>
+
+    <select id="selectAllWorkersWithDetails" resultMap="WorkerResultMap">
+        SELECT w.worker_id, w.worker_name, w.age,
+               s.skill_id, sm.skill_name, s.skill_level, s.productivity,
+               ws.day_of_week, st.shift_id, st.shift_name, st.start_time, st.end_time
+        FROM worker w
+        LEFT JOIN worker_skill s ON w.worker_id = s.worker_id
+        LEFT JOIN skill_master sm ON s.skill_id = sm.skill_id
+        LEFT JOIN worker_shift ws ON w.worker_id = ws.worker_id
+        LEFT JOIN shift_template st ON ws.shift_id = st.shift_id
+    </select>
+
+    <select id="selectWorkerByIdWithDetails" resultMap="WorkerResultMap">
+        SELECT w.worker_id, w.worker_name, w.ag
+               s.skill_id, sm.skill_name, s.skill_level, s.productivity,
+               ws.day_of_week, st.shift_id, st.shift_name, st.start_time, st.end_time
+        FROM worker w
+        LEFT JOIN worker_skill s ON w.worker_id = s.worker_id
+        LEFT JOIN skill_master sm ON s.skill_id = sm.skill_id
+        LEFT JOIN worker_shift ws ON w.worker_id = ws.worker_id
+        LEFT JOIN shift_template st ON ws.shift_id = st.shift_id
+        WHERE w.worker_id = #{workerId}
+    </select>
+
+    <insert id="insertWorker" parameterType="com.wms.optimization.entity.Worker">
+        INSERT INTO worker(worker_id, worker_name, age)
+        VALUES(#{workerId}, #{workerName}, #{age})
+    </insert>
+
+    <insert id="insertWorkerSkill">
+        INSERT INTO worker_skill(worker_id, skill_id, skill_level, productivity)
+        VALUES(#{workerId}, #{skillId}, #{skillLevel}, #{productivity})
+    </insert>
+    <insert id="insertWorkerShift">
+        INSERT INTO worker_shift(worker_id, shift_id, day_of_week)
+        VALUES(#{workerId}, #{shiftId}, #{dayOfWeek})
+    </insert>
+    <delete id="deleteWorker" parameterType="string">
+        DELETE FROM worker WHERE worker_id = #{workerId}
+    </delete>
+</mapper>

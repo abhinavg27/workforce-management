@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wms.optimization.mapper.AssignmentMapper">
+    <resultMap id="AssignmentResultMap" type="com.wms.optimization.entity.Assignment">
+        <id property="id" column="id" />
+        <result property="workerId" column="worker_id" />
+        <result property="taskId" column="task_id" />
+        <result property="assignedAt" column="assigned_at" />
+        <result property="status" column="status" />
+        <result property="feedback" column="feedback" />
+    </resultMap>
+
+    <select id="selectAllAssignments" resultMap="AssignmentResultMap">
+        SELECT id, worker_id, task_id, assigned_at, status, feedback FROM assignment
+    </select>
+
+    <select id="selectAssignmentById" resultMap="AssignmentResultMap">
+        SELECT id, worker_id, task_id, assigned_at, status, feedback FROM assignment WHERE id = #{id}
+    </select>
+
+    <insert id="insertAssignment" parameterType="com.wms.optimization.entity.Assignment">
+        INSERT INTO assignment(worker_id, task_id, assigned_at, status, feedback)
+        VALUES(#{workerId}, #{taskId}, #{assignedAt}, #{status}, #{feedback})
+    </insert>
+
+    <update id="updateAssignmentStatus" parameterType="com.wms.optimization.entity.Assignment">
+        UPDATE assignment
+        SET status = #{status}, feedback = #{feedback}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteAssignment" parameterType="long">
+        DELETE FROM assignment WHERE id = #{id}
+    </delete>
+</mapper>

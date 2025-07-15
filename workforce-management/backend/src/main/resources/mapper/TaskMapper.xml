@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wms.optimization.mapper.TaskMapper">
+    <resultMap id="TaskResultMap" type="com.wms.optimization.entity.Task">
+        <id property="id" column="id" />
+        <result property="skillId" column="skill_id" />
+        <result property="taskName" column="task_name" />
+        <result property="taskType" column="task_type" />
+        <result property="priority" column="priority" />
+        <result property="dependentTaskId" column="dependent_task_id" />
+        <result property="taskCount" column="task_count" />
+    </resultMap>
+
+    <select id="selectAllTasks" resultMap="TaskResultMap">
+        SELECT id, skill_id, task_name, task_type, priority, dependent_task_id, task_count FROM task
+    </select>
+
+    <select id="selectTaskById" resultMap="TaskResultMap">
+        SELECT id, skill_id, task_name, task_type, priority, dependent_task_id, task_count FROM task WHERE id = #{id}
+    </select>
+
+    <insert id="insertTask" parameterType="com.wms.optimization.entity.Task">
+        INSERT INTO task(id, skill_id, task_name, task_type, priority, dependent_task_id, task_count)
+        VALUES(#{id}, #{skillId}, #{taskName}, #{taskType}, #{priority}, #{dependentTaskId}, #{taskCount})
+    </insert>
+
+    <delete id="deleteTask" parameterType="long">
+        DELETE FROM task WHERE id = #{id}
+    </delete>
+</mapper>

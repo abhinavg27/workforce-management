@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wms.optimization.mapper.ShiftMapper">
+    <resultMap id="ShiftInfoResultMap" type="com.wms.optimization.entity.ShiftInfo">
+        <result property="shiftId" column="shift_id" />
+        <result property="shiftName" column="shift_name" />
+        <result property="startTime" column="start_time" />
+        <result property="endTime" column="end_time" />
+        <result property="dayOfWeek" column="day_of_week" />
+    </resultMap>
+
+    <select id="selectAllShifts" resultMap="ShiftInfoResultMap">
+        SELECT shift_id, shift_name, start_time, end_time, '' as day_of_week FROM shift_template
+    </select>
+</mapper>
