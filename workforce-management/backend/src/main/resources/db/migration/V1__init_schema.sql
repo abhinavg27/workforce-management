@@ -1,7 +1,6 @@
 
 -- V1__init_schema.sql
 
-
 CREATE TABLE worker (
     worker_id CHAR(7) PRIMARY KEY,
     worker_name VARCHAR(100) NOT NULL,
@@ -55,37 +54,28 @@ CREATE TABLE assignment (
 );
 
 -- Skill Master
-INSERT INTO skill_master (skill_id, skill_name) VALUES
-(100, 'Receive'),
-(120, 'Stow'),
-(121, 'D2B'),
-(200, 'Pick_Paperless'),
-(211, 'Pick_Paper'),
-(220, 'Induction'),
-(221, 'DPS'),
-(230, 'Rebin_Manual'),
-(231, 'Rebin_DAS'),
-(240, 'Pack'),
-(260, 'Gift'),
-(250, 'Pick to Go Paperless'),
-(300, 'ShipSort'),
-(500, 'Maintenance'),
-(600, 'QA'),
-(400, 'Forklift'),
-(700, 'Management'),
-(243, 'Pack_Return'),
-(241, 'Pack_Paperless'),
-(242, 'Pack_Paper'),
-(251, 'Pick to Go Paper');
-
--- Example population, update these according to your mapping table
-UPDATE skill_master SET process_skill_sub_category_cd = 7000 WHERE skill_name IN ('Receive', 'Stow', 'D2B');
-UPDATE skill_master SET process_skill_sub_category_cd = 8000 WHERE skill_name IN ('Pick_Paperless', 'Pick_Paper', 'Pick to Go Paperless', 'Pick to Go Paper');
-UPDATE skill_master SET process_skill_sub_category_cd = 8001 WHERE skill_name IN ('Induction', 'DPS', 'Rebin_Manual', 'Rebin_DAS');
-UPDATE skill_master SET process_skill_sub_category_cd = 8002 WHERE skill_name IN ('Pack', 'Pack_Paperless', 'Pack_Paper', 'Pack_Return', 'Gift');
-UPDATE skill_master SET process_skill_sub_category_cd = 7002 WHERE skill_name IN ('ShipSort');
-UPDATE skill_master SET process_skill_sub_category_cd = 3001 WHERE skill_name IN ('Maintenance', 'QA', 'Forklift');
-UPDATE skill_master SET process_skill_sub_category_cd = 3002 WHERE skill_name IN ('Management');
+INSERT INTO skill_master (skill_id, skill_name, process_skill_sub_category_cd) VALUES
+(100, 'Receive', 7000),
+(120, 'Stow', 7000),
+(121, 'D2B', 7000),
+(200, 'Pick_Paperless', 8000),
+(211, 'Pick_Paper', 8000),
+(220, 'Induction', 8001),
+(221, 'DPS', 8001),
+(230, 'Rebin_Manual', 8001),
+(231, 'Rebin_DAS', 8001),
+(240, 'Pack', 8002),
+(260, 'Gift', 8002),
+(250, 'Pick to Go Paperless', 8002),
+(300, 'ShipSort', 7002),
+(500, 'Maintenance', 3001),
+(600, 'QA', 3001),
+(400, 'Forklift', 3001),
+(700, 'Management', 3002),
+(243, 'Pack_Return', 8002),
+(241, 'Pack_Paperless', 8002),
+(242, 'Pack_Paper', 8002),
+(251, 'Pick to Go Paper', 8002);
 -- Set a default for any skills not matched above (optional)
 UPDATE skill_master SET process_skill_sub_category_cd = 7000 WHERE process_skill_sub_category_cd IS NULL;
 
