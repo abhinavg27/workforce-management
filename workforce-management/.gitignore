@@ -25,3 +25,11 @@ backend/target
 *.sln
 *.sw?
 .vite/*
+
+# Python files
+chatbot/venv
+chatbot/.venv
+chatbot/__pycache__
+chatbot/.pytest_cache
+chatbot/.mypy_cache
+chatbot/.coverage
