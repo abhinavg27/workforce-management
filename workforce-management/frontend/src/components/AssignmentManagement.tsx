@@ -1,125 +1,98 @@
 import React, { useState } from 'react';
-import { Typography, Button, List, ListItem, ListItemText, Box, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Stack } from '@mui/material';
-import { useAppSelector, useAppDispatch } from '../hooks';
-import type { RootState } from '../store';
-import type { Assignment } from '../slices/assignmentSlice';
-import { setAssignments } from '../slices/assignmentSlice';
-import axios from 'axios';
-
-const API_BASE = 'http://localhost:8080/api';
+import { Typography, Button, Box } from '@mui/material';
+import html2canvas from 'html2canvas';
+import GanttChart from './GanttChart';
+import GanttTable from './GanttTable';
+import type { WorkerAssignmentScheduleDTO } from './GanttChart';
+import { fetchCurrentAssignments, reOptimizeAssignments } from '../apiGantt';
+import type { UnassignedTaskDTO } from '../apiGantt';
 
 const AssignmentManagement: React.FC = () => {
-  const assignments = useAppSelector((state: RootState) => state.assignments.assignments);
-  const workers = useAppSelector((state: RootState) => state.workers.workers);
-  const tasks = useAppSelector((state: RootState) => state.tasks.tasks);
-  const dispatch = useAppDispatch();
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [rejectingAssignment, setRejectingAssignment] = useState<Assignment | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [ganttSchedules, setGanttSchedules] = useState<WorkerAssignmentScheduleDTO[]>([]);
+  const [unassignedTasks, setUnassignedTasks] = useState<UnassignedTaskDTO[]>([]);
+  const [showGantt, setShowGantt] = useState(false);
+  const [showTable, setShowTable] = useState(false);
 
-  // Fetch assignments from backend
-  const fetchAssignments = async () => {
-    const res = await axios.get(`${API_BASE}/assignments`);
-    dispatch(setAssignments(res.data));
-  };
-
-  // Recommend assignments (optimize)
-  const handleRecommend = async () => {
-    setLoading(true);
-    await axios.post(`${API_BASE}/assignments/optimize`);
-    await fetchAssignments();
-    setLoading(false);
-  };
-
-  // Accept assignment
-  const handleAccept = async (assignment: Assignment) => {
-    await axios.post(`${API_BASE}/assignments/${assignment.id}/accept`);
-    await fetchAssignments();
-  };
-
-  // Open reject dialog
-  const handleRejectOpen = (assignment: Assignment) => {
-    setRejectingAssignment(assignment);
-    setFeedbackText('');
-    setFeedbackOpen(true);
-  };
-
-  // Submit reject
-  const handleRejectSubmit = async () => {
-    if (rejectingAssignment) {
-      await axios.post(`${API_BASE}/assignments/${rejectingAssignment.id}/reject`, { feedback: feedbackText });
-      setFeedbackOpen(false);
-      setRejectingAssignment(null);
-      setFeedbackText('');
-      await fetchAssignments();
-    }
-  };
-
-  // On mount, fetch assignments
+  // On mount, load assignments from DB for Gantt chart
   React.useEffect(() => {
-    fetchAssignments();
-    // eslint-disable-next-line
+    (async () => {
+      const schedules = await fetchCurrentAssignments();
+      setGanttSchedules(schedules);
+      setShowGantt(true);
+    })();
   }, []);
 
-  // Helper to get worker/task display
-  const getWorkerName = (id: number) => {
-    // workerId is string in Worker, but assignment.workerId is likely number or string
-    const found = workers.find(w => String(w.workerId) === String(id));
-    return found ? found.workerName : `#${id}`;
+  // Show Gantt chart (just sets view, does not re-fetch)
+  const handleShowGantt = () => {
+    setShowGantt(true);
+    setShowTable(false);
   };
-  const getTaskDesc = (id: number) => {
-    const found = tasks.find(t => t.id === id);
-    return found ? found.taskName : `#${id}`;
+
+  const handleShowTable = async () => {
+    setShowTable(true);
+    setShowGantt(false);
+    // Optionally, you may want to fetch the table data here if needed
+  };
+
+  // Re-optimize assignments
+  const handleReOptimize = async () => {
+    const result = await reOptimizeAssignments();
+    setGanttSchedules(result.schedules);
+    setUnassignedTasks(result.unassignedTasks || []);
+    setShowGantt(true);
+    setShowTable(false);
+  };
+
+  // Export Gantt chart as PNG
+  const handleExportGantt = async () => {
+    const ganttBox = document.querySelector('#gantt-chart-root') as HTMLElement;
+    if (!ganttBox) return;
+    const canvas = await html2canvas(ganttBox, { backgroundColor: '#fff' });
+    const link = document.createElement('a');
+    link.download = 'gantt-chart.png';
+    link.href = canvas.toDataURL();
+    link.click();
   };
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>Assignments</Typography>
-      <Button variant="contained" color="primary" onClick={handleRecommend} sx={{ mb: 2 }} disabled={loading}>
-        {loading ? 'Recommending...' : 'Recommend Assignments'}
+      <Typography variant="h5" gutterBottom>Workforce Assignments</Typography>
+      <Button variant="outlined" color="primary" onClick={handleShowGantt} sx={{ mb: 2, mr: 2 }} disabled={showGantt}>
+        Show Gantt Chart
       </Button>
-      <List>
-        {assignments.map((assignment) => (
-          <ListItem key={assignment.id} alignItems="flex-start" sx={{ mb: 1, border: '1px solid #eee', borderRadius: 1 }}>
-            <ListItemText
-              primary={<>
-                <b>Worker:</b> {getWorkerName(assignment.workerId)} &nbsp; <b>Task:</b> {getTaskDesc(assignment.taskId)}
-              </>}
-              secondary={<>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                  <Chip label={assignment.status || 'PENDING'} color={assignment.status === 'ACCEPTED' ? 'success' : assignment.status === 'REJECTED' ? 'error' : 'default'} size="small" />
-                  {assignment.feedback && <Chip label={`Feedback: ${assignment.feedback}`} size="small" variant="outlined" />}
-                </Stack>
-              </>}
-            />
-            {assignment.status === 'PENDING' && (
-              <Stack direction="row" spacing={1}>
-                <Button color="success" variant="outlined" onClick={() => handleAccept(assignment)}>Accept</Button>
-                <Button color="error" variant="outlined" onClick={() => handleRejectOpen(assignment)}>Reject</Button>
-              </Stack>
-            )}
-          </ListItem>
-        ))}
-      </List>
-      <Dialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)}>
-        <DialogTitle>Reject Assignment</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Feedback (optional)"
-            type="text"
-            fullWidth
-            value={feedbackText}
-            onChange={e => setFeedbackText(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFeedbackOpen(false)}>Cancel</Button>
-          <Button color="error" onClick={handleRejectSubmit}>Reject</Button>
-        </DialogActions>
-      </Dialog>
+      <Button variant="outlined" color="secondary" onClick={handleShowTable} sx={{ mb: 2, mr: 2 }} disabled={showTable}>
+        Show Table View
+      </Button>
+      <Button variant="contained" color="error" onClick={handleReOptimize} sx={{ mb: 2, mr: 2 }}>
+        Re-optimize Assignments
+      </Button>
+      {showGantt && (
+        <>
+          <Button variant="outlined" color="primary" onClick={handleExportGantt} sx={{ mb: 2, mr: 2 }}>
+            Export Gantt as PNG
+          </Button>
+          <Box id="gantt-chart-root">
+            <GanttChart schedules={ganttSchedules} />
+          </Box>
+          {unassignedTasks.length > 0 && (
+            <Box sx={{ mt: 2, p: 2, background: '#fff3e0', border: '1px solid #ffb300', borderRadius: 2 }}>
+              <Typography variant="h6" color="warning.main" gutterBottom>Unassigned Tasks</Typography>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {unassignedTasks.map((task) => (
+                  <li key={task.id}>
+                    <b>Task ID:</b> {task.id} &nbsp; <b>Units Unassigned:</b> {task.remaining_units}
+                  </li>
+                ))}
+              </ul>
+            </Box>
+          )}
+        </>
+      )}
+      {showTable && (
+        <>
+          <GanttTable schedules={ganttSchedules} />
+        </>
+      )}
     </Box>
   );
 };

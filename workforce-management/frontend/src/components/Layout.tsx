@@ -48,7 +48,7 @@ const Layout: React.FC = () => {
           </List>
         </Box>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, ml: `${drawerWidth}px` }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, boxSizing: 'border-box', overflowX: 'auto', minWidth: 0 }}>
         <Toolbar />
         <Outlet />
       </Box>
