@@ -12,6 +12,7 @@ import { setWorkers } from './slices/workerSlice';
 import { setTasks } from './slices/taskSlice';
 import { setAssignments } from './slices/assignmentSlice';
 import { fetchWorkers, fetchTasks, fetchAssignments } from './api';
+import { Chatbot } from './components/chatbot';
 
 function App() {
   const dispatch = useAppDispatch();
@@ -24,6 +25,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Chatbot />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<DashboardPage />} />
