@@ -1,18 +1,22 @@
 package com.wms.optimization.controller;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import com.wms.optimization.dto.TaskAssignmentDTO;
+import java.util.ArrayList;
 
 import com.wms.optimization.entity.Task;
 import com.wms.optimization.entity.Worker;
 import com.wms.optimization.service.AssignmentOptimizationService;
-import com.wms.optimization.service.AssignmentOptimizationService.AssignmentResult;
+import com.wms.optimization.dto.WorkerAssignmentScheduleDTO;
+import com.wms.optimization.dto.AssignmentOptimizationResultDTO;
 import com.wms.optimization.mapper.TaskMapper;
 import com.wms.optimization.mapper.WorkerMapper;
 import com.wms.optimization.entity.Assignment;
 import com.wms.optimization.mapper.AssignmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/assignments/optimize")
@@ -23,23 +27,64 @@ public class AssignmentOptimizationController {
     private final WorkerMapper workerMapper;
     private final AssignmentMapper assignmentMapper;
 
+    /**
+     * GET: Return current assignments from DB for Gantt chart (default view)
+     */
+    @GetMapping
+    public List<WorkerAssignmentScheduleDTO> getCurrentAssignments() {
+        List<Assignment> allAssignments = assignmentMapper.selectAllAssignments();
+        // Group assignments by worker
+        Map<String, WorkerAssignmentScheduleDTO> workerMap = new LinkedHashMap<>();
+        for (Assignment a : allAssignments) {
+            WorkerAssignmentScheduleDTO workerSchedule = workerMap.computeIfAbsent(a.getWorkerId(), k -> new WorkerAssignmentScheduleDTO(k, a.getWorkerName(), new ArrayList<>()));
+            TaskAssignmentDTO dto = new TaskAssignmentDTO(
+                    a.getTaskId(),
+                    a.getTaskName(),
+                    a.getStartTime(),
+                    a.getEndTime(),
+                    a.getUnitsAssigned(),
+                    a.isBreak()
+            );
+            workerSchedule.getAssignments().add(dto);
+        }
+        return new ArrayList<>(workerMap.values());
+    }
+
+    /**
+     * POST: Re-optimize assignments, delete previous, persist new assignments
+     */
     @PostMapping
-    public List<AssignmentDTO> optimizeAssignments() {
+    @Transactional
+    public AssignmentOptimizationResultDTO optimizeAssignments() {
+        // Transactional: delete all, then optimize, then insert all new assignments
+        assignmentMapper.deleteAllAssignments();
         List<Task> tasks = taskMapper.selectAllTasks();
         List<Worker> workers = workerMapper.selectAllWorkersWithDetails();
-        List<Assignment> assignments = assignmentMapper.selectAllAssignments();
-        List<AssignmentResult> results = optimizationService.optimizeAssignments(tasks, workers, assignments);
-        // Persist assignments as PENDING
-        for (AssignmentResult result : results) {
-            Assignment assignment = new Assignment();
-            assignment.setWorkerId(result.worker.getWorkerId());
-            assignment.setTaskId(result.task.getId());
-            assignment.setAssignedAt(LocalDateTime.now());
-            assignment.setStatus("PENDING");
-            assignment.setFeedback(null);
-            assignmentMapper.insertAssignment(assignment);
+        List<Assignment> assignments = new ArrayList<>();
+        AssignmentOptimizationResultDTO result = optimizationService.optimizeAssignments(tasks, workers, assignments);
+        for (WorkerAssignmentScheduleDTO schedule : result.getSchedules()) {
+            for (TaskAssignmentDTO dto : schedule.getAssignments()) {
+                String tid = dto.getTaskId();
+                boolean isBreak = dto.isBreak();
+                if (tid == null || tid.trim().isEmpty() || (!isBreak && "0".equals(tid))) {
+                    System.err.println("[WARN] Skipping assignment with " + tid +" null/empty/invalid taskId for worker: " + schedule.getWorkerId() + ", taskName: " + dto.getTaskName() + ", isBreak: " + isBreak);
+                    continue;
+                }
+                Assignment a = new Assignment();
+                a.setWorkerId(schedule.getWorkerId());
+                a.setWorkerName(schedule.getWorkerName());
+                a.setTaskId(dto.getTaskId());
+                a.setTaskName(dto.getTaskName());
+                a.setStartTime(dto.getStartTime());
+                a.setEndTime(dto.getEndTime());
+                a.setUnitsAssigned(dto.getUnitsAssigned());
+                a.setBreak(dto.isBreak());
+                a.setStatus("PENDING");
+                a.setFeedback(null);
+                assignmentMapper.insertAssignment(a);
+            }
         }
-        return results.stream().map(AssignmentDTO::fromResult).collect(Collectors.toList());
+        return result;
     }
 
     @PostMapping("/{id}/accept")
@@ -67,26 +112,5 @@ public class AssignmentOptimizationController {
         public String feedback;
     }
 
-    public static class AssignmentDTO {
-        public long taskId;
-        public String taskName;
-        public String workerId;
-        public String workerName;
-        public int skillLevel;
-        public int productivity;
-        public static AssignmentDTO fromResult(AssignmentResult result) {
-            AssignmentDTO dto = new AssignmentDTO();
-            dto.taskId = result.task.getId();
-            dto.taskName = result.task.getTaskName();
-            dto.workerId = result.worker.getWorkerId();
-            dto.workerName = result.worker.getWorkerName();
-            dto.skillLevel = result.worker.getSkills().stream()
-                .filter(s -> s.getSkillId() == result.task.getSkillId())
-                .map(s -> s.getSkillLevel()).findFirst().orElse(0);
-            dto.productivity = result.worker.getSkills().stream()
-                .filter(s -> s.getSkillId() == result.task.getSkillId())
-                .map(s -> s.getProductivity()).findFirst().orElse(0);
-            return dto;
-        }
-    }
+    // Old AssignmentDTO and fromResult removed (no longer used)
 }

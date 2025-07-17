@@ -1,44 +1,38 @@
 # Workforce Management Optimization System - Backend
 
-This is a Spring Boot 3.1.5 backend for a workforce task assignment optimization system for warehouse logistics operations.
+Spring Boot backend for workforce assignment optimization in warehouse logistics.
 
 ## Features
-- Java 17, Maven, Spring Boot 3.1.5
-- Google OR-Tools integration (for optimization logic)
-- PostgreSQL with Flyway migrations
-- MapStruct for DTO mapping
-- WebSocket (STOMP) for real-time updates
-- JWT/OAuth2 security (basic config, extend as needed)
-- Modular, testable structure
+- Java 21, Maven, Spring Boot 3.5.3
+- MySQL (or compatible) with Flyway migrations (see `db/migration/`)
 - REST APIs for workers, tasks, assignments
-- Analytics endpoints (to be implemented)
-- Validation, error handling, CORS config
-- Sample data loader
+- Integration with Python FastAPI microservice for advanced optimization
+- Modular, testable structure
+- Real-time updates (WebSocket, optional)
+- JWT/OAuth2 security (optional)
 
-## Getting Started
-
-1. **Configure PostgreSQL**
-   - Ensure PostgreSQL is running and accessible at `localhost:5432/wmsdb` (see `application.properties`).
-   - Update username/password as needed.
-2. **Build and Run**
+## Running the Backend
+1. Ensure MySQL is running and configured in `src/main/resources/application.properties`.
+2. Run Flyway migrations (auto on startup).
+3. Build and start:
    ```sh
-   mvn clean spring-boot:run
+   mvn clean package
+   mvn spring-boot:run
    ```
-3. **API Endpoints**
-   - `GET /api/workers`, `POST /api/workers`, ...
-   - `GET /api/tasks`, ...
-   - `GET /api/assignments`, ...
 
-4. **WebSocket**
-   - Connect to `/ws` endpoint (STOMP/SockJS)
+## API Endpoints
+- `GET /api/workers` - List workers
+- `GET /api/tasks` - List tasks
+- `GET /api/assignments/optimize` - Get current assignments (Gantt format)
+- `POST /api/assignments/optimize` - Re-optimize assignments (calls Python, updates DB)
 
-5. **Flyway Migrations**
-   - On startup, DB schema is auto-migrated.
+## Integration with Python Optimizer
+- The backend calls the Python FastAPI microservice for assignment optimization.
+- Results are persisted in the assignment table and served to the frontend.
 
 ## Development
-- Use Java 17+
-- See `src/main/resources/application.properties` for config
-- Extend security, analytics, and optimization logic as needed
+- Use Java 21+
+- See `src/main/resources/application.properties` for DB config
 
 ## License
 MIT

@@ -155,14 +155,7 @@ const TaskManagement: React.FC = () => {
               size="small"
               InputProps={{ readOnly: true }}
             />
-            <TextField
-              label="Group"
-              value={selectedSkill ? selectedSkill.skillName + ' Group' : ''}
-              fullWidth
-              margin="normal"
-              size="small"
-              InputProps={{ readOnly: true }}
-            />
+            // Removed Group field
             <TextField
               label="Task Type"
               value={taskType}
@@ -217,7 +210,7 @@ const TaskManagement: React.FC = () => {
                 </TableCell>
                 <TableCell>Task ID</TableCell>
                 <TableCell>Task Name</TableCell>
-                <TableCell>Group</TableCell>
+                <TableCell>Dependent Task ID</TableCell>
                 <TableCell>Type</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Count</TableCell>
@@ -242,7 +235,7 @@ const TaskManagement: React.FC = () => {
                   </TableCell>
                   <TableCell>{task.id}</TableCell>
                   <TableCell>{task.taskName}</TableCell>
-                  <TableCell>{task.taskName + ' Group'}</TableCell>
+                  <TableCell>{task.dependentTaskId ?? ''}</TableCell>
                   <TableCell>{task.taskType}</TableCell>
                   <TableCell>{task.priority}</TableCell>
                   <TableCell>{task.taskCount}</TableCell>

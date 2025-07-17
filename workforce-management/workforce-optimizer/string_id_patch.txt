@@ -1,0 +1,229 @@
+*** Begin Patch
+*** Update File: main.py
+@@ class Task(BaseModel):
+-class Task(BaseModel):
+-    id: int
+-    name: str
+-    skill_id: int
+-    priority: int
+-    units: int
+-    dependencies: Optional[List[int]] = []
++class Task(BaseModel):
++    id: str
++    name: str
++    skill_id: int
++    priority: int
++    units: int
++    dependencies: Optional[List[str]] = []
+@@ class Worker(BaseModel):
+-class Worker(BaseModel):
+-    id: int
+-    name: str
+-    skills: List[int]
+-    productivity: dict  # skill_id -> units/hour
+-    shift_start: str  # '08:00'
+-    shift_end: str    # '16:00'
+-    break_minutes: int = 60
++class Worker(BaseModel):
++    id: str
++    name: str
++    skills: List[int]
++    productivity: dict  # skill_id -> units/hour
++    shift_start: str  # '08:00'
++    shift_end: str    # '16:00'
++    break_minutes: int = 60
+@@ class Assignment(BaseModel):
+-class Assignment(BaseModel):
+-    worker_id: int
+-    task_id: int
+-    start: str  # ISO datetime
+-    end: str    # ISO datetime
+-    units: int
+-    is_break: bool = False
++class Assignment(BaseModel):
++    worker_id: str
++    task_id: str
++    start: str  # ISO datetime
++    end: str    # ISO datetime
++    units: int
++    is_break: bool = False
+@@ class OptimizeRequest(BaseModel):
+-class OptimizeRequest(BaseModel):
+-    tasks: List[Task]
+-    workers: List[Worker]
+-    date: str  # 'YYYY-MM-DD'
++class OptimizeRequest(BaseModel):
++    tasks: List[Task]
++    workers: List[Worker]
++    date: str  # 'YYYY-MM-DD'
+@@ class OptimizeResponse(BaseModel):
+-class OptimizeResponse(BaseModel):
+-    assignments: List[Assignment]
++class OptimizeResponse(BaseModel):
++    assignments: List[Assignment]
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    worker_map = {w.id: w for w in req.workers}
+-    task_map = {t.id: t for t in req.tasks}
++    worker_map = {w.id: w for w in req.workers}
++    task_map = {t.id: t for t in req.tasks}
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for t in req.tasks:
+-        for w in req.workers:
+-            # Only allow if worker has skill
+-            if t.skill_id not in w.skills:
+-                continue
+-            # Productivity: units/hour for this skill
+-            prod = w.productivity.get(str(t.skill_id), w.productivity.get(t.skill_id, 1))
+-            duration = int(60 / prod) * t.units
+-            # Start var
+-            start = model.NewIntVar(shift_bounds[w.id][0], shift_bounds[w.id][1] - duration, f"start_t{t.id}_w{w.id}")
+-            end = model.NewIntVar(shift_bounds[w.id][0] + duration, shift_bounds[w.id][1], f"end_t{t.id}_w{w.id}")
+-            interval = model.NewOptionalIntervalVar(start, duration, end, True, f"interval_t{t.id}_w{w.id}")
+-            intervals[(t.id, w.id)] = interval
+-            start_vars[(t.id, w.id)] = start
+-            end_vars[(t.id, w.id)] = end
+-            unit_vars[(t.id, w.id)] = t.units
+-            presences[(t.id, w.id)] = True
++    for t in req.tasks:
++        for w in req.workers:
++            # Only allow if worker has skill
++            if t.skill_id not in w.skills:
++                continue
++            # Productivity: units/hour for this skill
++            prod = w.productivity.get(str(t.skill_id), w.productivity.get(t.skill_id, 1))
++            duration = int(60 / prod) * t.units
++            # Start var
++            start = model.NewIntVar(shift_bounds[w.id][0], shift_bounds[w.id][1] - duration, f"start_t{t.id}_w{w.id}")
++            end = model.NewIntVar(shift_bounds[w.id][0] + duration, shift_bounds[w.id][1], f"end_t{t.id}_w{w.id}")
++            interval = model.NewOptionalIntervalVar(start, duration, end, True, f"interval_t{t.id}_w{w.id}")
++            intervals[(t.id, w.id)] = interval
++            start_vars[(t.id, w.id)] = start
++            end_vars[(t.id, w.id)] = end
++            unit_vars[(t.id, w.id)] = t.units
++            presences[(t.id, w.id)] = True
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for t in req.tasks:
+-        possible_workers = [w.id for w in req.workers if (t.id, w.id) in intervals]
+-        if not possible_workers:
+-            continue
+-        model.Add(sum([presences[(t.id, wid)] for wid in possible_workers]) == 1)
++    for t in req.tasks:
++        possible_workers = [w.id for w in req.workers if (t.id, w.id) in intervals]
++        if not possible_workers:
++            continue
++        model.Add(sum([presences[(t.id, wid)] for wid in possible_workers]) == 1)
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for w in req.workers:
+-        worker_intervals = [intervals[(t.id, w.id)] for t in req.tasks if (t.id, w.id) in intervals]
+-        if worker_intervals:
+-            model.AddNoOverlap(worker_intervals)
++    for w in req.workers:
++        worker_intervals = [intervals[(t.id, w.id)] for t in req.tasks if (t.id, w.id) in intervals]
++        if worker_intervals:
++            model.AddNoOverlap(worker_intervals)
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for t in req.tasks:
+-        if t.dependencies:
+-            for dep in t.dependencies:
+-                for w1 in req.workers:
+-                    for w2 in req.workers:
+-                        if (t.id, w1.id) in start_vars and (dep, w2.id) in end_vars:
+-                            model.Add(start_vars[(t.id, w1.id)] >= end_vars[(dep, w2.id)])
++    for t in req.tasks:
++        if t.dependencies:
++            for dep in t.dependencies:
++                for w1 in req.workers:
++                    for w2 in req.workers:
++                        if (t.id, w1.id) in start_vars and (dep, w2.id) in end_vars:
++                            model.Add(start_vars[(t.id, w1.id)] >= end_vars[(dep, w2.id)])
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for w in req.workers:
+-        break_start = shift_bounds[w.id][0] + 240
+-        break_end = break_start + w.break_minutes
+-        # No task interval can overlap the break
+-        for t in req.tasks:
+-            if (t.id, w.id) in intervals:
+-                s = start_vars[(t.id, w.id)]
+-                e = end_vars[(t.id, w.id)]
+-                before_break = model.NewBoolVar(f"before_break_t{t.id}_w{w.id}")
+-                after_break = model.NewBoolVar(f"after_break_t{t.id}_w{w.id}")
+-                model.Add(e <= break_start).OnlyEnforceIf(before_break)
+-                model.Add(s >= break_end).OnlyEnforceIf(after_break)
+-                model.AddBoolOr([before_break, after_break])
++    for w in req.workers:
++        break_start = shift_bounds[w.id][0] + 240
++        break_end = break_start + w.break_minutes
++        # No task interval can overlap the break
++        for t in req.tasks:
++            if (t.id, w.id) in intervals:
++                s = start_vars[(t.id, w.id)]
++                e = end_vars[(t.id, w.id)]
++                before_break = model.NewBoolVar(f"before_break_t{t.id}_w{w.id}")
++                after_break = model.NewBoolVar(f"after_break_t{t.id}_w{w.id}")
++                model.Add(e <= break_start).OnlyEnforceIf(before_break)
++                model.Add(s >= break_end).OnlyEnforceIf(after_break)
++                model.AddBoolOr([before_break, after_break])
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    model.Maximize(sum([task_map[t.id].priority * presences[(t.id, w.id)] for (t, w) in presences]))
++    model.Maximize(sum([task_map[t.id].priority * presences[(t.id, w.id)] for (t, w) in presences]))
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for (t_id, w_id), interval in intervals.items():
+-        if solver.Value(presences[(t_id, w_id)]):
+-            start_min = solver.Value(start_vars[(t_id, w_id)])
+-            end_min = solver.Value(end_vars[(t_id, w_id)])
+-            date = req.date
+-            start_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=start_min)
+-            end_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=end_min)
+-            assignments.append(Assignment(
+-                worker_id=w_id,
+-                task_id=t_id,
+-                start=start_dt.isoformat(),
+-                end=end_dt.isoformat(),
+-                units=unit_vars[(t_id, w_id)],
+-                is_break=False
+-            ))
++    for (t_id, w_id), interval in intervals.items():
++        if solver.Value(presences[(t_id, w_id)]):
++            start_min = solver.Value(start_vars[(t_id, w_id)])
++            end_min = solver.Value(end_vars[(t_id, w_id)])
++            date = req.date
++            start_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=start_min)
++            end_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=end_min)
++            assignments.append(Assignment(
++                worker_id=w_id,
++                task_id=t_id,
++                start=start_dt.isoformat(),
++                end=end_dt.isoformat(),
++                units=unit_vars[(t_id, w_id)],
++                is_break=False
++            ))
+@@ def optimize(req: OptimizeRequest, request: Request):
+-    for w in req.workers:
+-        break_start = shift_bounds[w.id][0] + 240
+-        break_end = break_start + w.break_minutes
+-        date = req.date
+-        start_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=break_start)
+-        end_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=break_end)
+-        assignments.append(Assignment(
+-            worker_id=w.id,
+-            task_id=-1,
+-            start=start_dt.isoformat(),
+-            end=end_dt.isoformat(),
+-            units=0,
+-            is_break=True
+-        ))
++    for w in req.workers:
++        break_start = shift_bounds[w.id][0] + 240
++        break_end = break_start + w.break_minutes
++        date = req.date
++        start_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=break_start)
++        end_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=break_end)
++        assignments.append(Assignment(
++            worker_id=w.id,
++            task_id="BREAK",
++            start=start_dt.isoformat(),
++            end=end_dt.isoformat(),
++            units=0,
++            is_break=True
++        ))
+*** End Patch

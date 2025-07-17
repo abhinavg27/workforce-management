@@ -11,5 +11,6 @@ public interface AssignmentMapper {
     Assignment selectAssignmentById(@Param("id") Long id);
     void insertAssignment(Assignment assignment);
     void deleteAssignment(@Param("id") Long id);
+    void deleteAllAssignments();
     void updateAssignmentStatus(Assignment assignment);
 }
