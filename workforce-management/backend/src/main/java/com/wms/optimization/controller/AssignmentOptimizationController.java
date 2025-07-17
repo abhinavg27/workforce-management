@@ -13,31 +13,62 @@ import com.wms.optimization.mapper.TaskMapper;
 import com.wms.optimization.mapper.WorkerMapper;
 import com.wms.optimization.entity.Assignment;
 import com.wms.optimization.mapper.AssignmentMapper;
+import com.wms.optimization.mapper.UnassignedTaskMapper;
+import com.wms.optimization.dto.UnassignedTaskDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/assignments/optimize")
 @RequiredArgsConstructor
 public class AssignmentOptimizationController {
+
+    public static class RemoveAssignmentRequest {
+        public Long assignmentId;
+        public String taskId;
+        public int unitsAssigned;
+        public String taskName;
+    }
     private final AssignmentOptimizationService optimizationService;
     private final TaskMapper taskMapper;
     private final WorkerMapper workerMapper;
     private final AssignmentMapper assignmentMapper;
+    private final UnassignedTaskMapper unassignedTaskMapper;
 
     /**
-     * GET: Return current assignments from DB for Gantt chart (default view)
+     * POST: Remove assignment and persist to unassigned_task
+     */
+    @PostMapping("/remove")
+    @Transactional
+    public void removeAssignment(@RequestBody RemoveAssignmentRequest req) {
+        // Prevent removal of break assignments
+        Assignment assignment = assignmentMapper.selectAssignmentById(req.assignmentId);
+        if (assignment != null && assignment.isBreak()) {
+            // Do not remove break assignments
+            return;
+        }
+        // Remove assignment from DB
+        assignmentMapper.deleteAssignment(req.assignmentId);
+        // Add/update unassigned task in DB
+        UnassignedTaskDTO ut = new UnassignedTaskDTO(req.taskId, req.unitsAssigned, req.taskName);
+        unassignedTaskMapper.insertUnassignedTask(ut);
+    }
+
+    /**
+     * GET: Return current assignments and unassigned tasks from DB for Gantt chart (default view)
      */
     @GetMapping
-    public List<WorkerAssignmentScheduleDTO> getCurrentAssignments() {
+    public AssignmentOptimizationResultDTO getCurrentAssignments() {
         List<Assignment> allAssignments = assignmentMapper.selectAllAssignments();
         // Group assignments by worker
         Map<String, WorkerAssignmentScheduleDTO> workerMap = new LinkedHashMap<>();
         for (Assignment a : allAssignments) {
             WorkerAssignmentScheduleDTO workerSchedule = workerMap.computeIfAbsent(a.getWorkerId(), k -> new WorkerAssignmentScheduleDTO(k, a.getWorkerName(), new ArrayList<>()));
             TaskAssignmentDTO dto = new TaskAssignmentDTO(
+                    a.getId(),
                     a.getTaskId(),
                     a.getTaskName(),
                     a.getStartTime(),
@@ -47,7 +78,21 @@ public class AssignmentOptimizationController {
             );
             workerSchedule.getAssignments().add(dto);
         }
-        return new ArrayList<>(workerMap.values());
+        List<WorkerAssignmentScheduleDTO> schedules = new ArrayList<>(workerMap.values());
+        List<UnassignedTaskDTO> unassignedTasks = unassignedTaskMapper.selectAllUnassignedTasks();
+        // Map task IDs to names for unassigned tasks
+        List<Task> allTasks = taskMapper.selectAllTasks();
+        Map<String, String> idToName = new HashMap<>();
+        for (Task t : allTasks) {
+            idToName.put(String.valueOf(t.getId()), t.getTaskName());
+        }
+        for (UnassignedTaskDTO ut : unassignedTasks) {
+            String name = idToName.get(String.valueOf(ut.getId()));
+            if (name != null && !name.isEmpty()) {
+                ut.setTask_name(name);
+            }
+        }
+        return new AssignmentOptimizationResultDTO(schedules, unassignedTasks);
     }
 
     /**
@@ -58,6 +103,7 @@ public class AssignmentOptimizationController {
     public AssignmentOptimizationResultDTO optimizeAssignments() {
         // Transactional: delete all, then optimize, then insert all new assignments
         assignmentMapper.deleteAllAssignments();
+        unassignedTaskMapper.deleteAllUnassignedTasks();
         List<Task> tasks = taskMapper.selectAllTasks();
         List<Worker> workers = workerMapper.selectAllWorkersWithDetails();
         List<Assignment> assignments = new ArrayList<>();
@@ -82,6 +128,42 @@ public class AssignmentOptimizationController {
                 a.setStatus("PENDING");
                 a.setFeedback(null);
                 assignmentMapper.insertAssignment(a);
+            }
+        }
+        // Persist unassigned tasks with task_name
+        if (result.getUnassignedTasks() != null) {
+            for (UnassignedTaskDTO ut : result.getUnassignedTasks()) {
+                if (ut.getTask_name() == null || ut.getTask_name().isEmpty()) {
+                    // Try to find task name from tasks list (robust string comparison)
+                    String utIdStr = String.valueOf(ut.getId());
+                    boolean found = false;
+                    for (Task t : tasks) {
+                        String tIdStr = String.valueOf(t.getId());
+                        if (tIdStr.equals(utIdStr)) {
+                            ut.setTask_name(t.getTaskName());
+                            found = true;
+                            break;
+                        }
+                    }
+                    // Fallback: if not found, keep id as name
+                    if (!found) {
+                        ut.setTask_name(utIdStr);
+                    }
+                }
+                unassignedTaskMapper.insertUnassignedTask(ut);
+            }
+        }
+        // Map task IDs to names for unassigned tasks in response
+        if (result.getUnassignedTasks() != null) {
+            Map<String, String> idToName = new HashMap<>();
+            for (Task t : tasks) {
+                idToName.put(String.valueOf(t.getId()), t.getTaskName());
+            }
+            for (UnassignedTaskDTO ut : result.getUnassignedTasks()) {
+                String name = idToName.get(String.valueOf(ut.getId()));
+                if (name != null && !name.isEmpty()) {
+                    ut.setTask_name(name);
+                }
             }
         }
         return result;

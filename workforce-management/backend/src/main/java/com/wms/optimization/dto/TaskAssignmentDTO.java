@@ -3,6 +3,7 @@ package com.wms.optimization.dto;
 import java.time.LocalDateTime;
 
 public class TaskAssignmentDTO {
+    private Long id; // DB assignment id
     private String taskId;
     private String taskName;
     private LocalDateTime startTime;
@@ -12,7 +13,8 @@ public class TaskAssignmentDTO {
 
     public TaskAssignmentDTO() {}
 
-    public TaskAssignmentDTO(String taskId, String taskName, LocalDateTime startTime, LocalDateTime endTime, int unitsAssigned, boolean isBreak) {
+    public TaskAssignmentDTO(Long id, String taskId, String taskName, LocalDateTime startTime, LocalDateTime endTime, int unitsAssigned, boolean isBreak) {
+        this.id = id;
         this.taskId = taskId;
         this.taskName = taskName;
         this.startTime = startTime;
@@ -20,6 +22,9 @@ public class TaskAssignmentDTO {
         this.unitsAssigned = unitsAssigned;
         this.isBreak = isBreak;
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getTaskId() { return taskId; }
     public void setTaskId(String taskId) { this.taskId = taskId; }

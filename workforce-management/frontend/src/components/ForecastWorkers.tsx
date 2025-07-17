@@ -242,7 +242,7 @@ const handleForecast = async () => {
           }
         }
       `}</style>
-      <h2>Rakuten Supersale Workforce Forecaster</h2>
+      <h2>Workforce Forecaster</h2>
       <div className="input-section">
         <label htmlFor="expectedOrders">Expected Orders for Next Event:</label>
         <input

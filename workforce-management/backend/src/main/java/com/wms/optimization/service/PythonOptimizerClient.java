@@ -2,6 +2,7 @@ package com.wms.optimization.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wms.optimization.dto.TaskAssignmentDTO;
+import com.wms.optimization.dto.UnassignedTaskDTO;
 import com.wms.optimization.dto.WorkerAssignmentScheduleDTO;
 import com.wms.optimization.entity.Assignment;
 import com.wms.optimization.entity.SkillInfo;
@@ -24,7 +25,7 @@ public class PythonOptimizerClient {
     private static final String PYTHON_OPTIMIZER_URL = "http://localhost:8000/optimize";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public List<WorkerAssignmentScheduleDTO> optimizeWithPython(List<Task> tasks, List<Worker> workers, List<Assignment> assignments, LocalDate date, List<String> unassignedTasksOut) throws Exception {
+    public List<WorkerAssignmentScheduleDTO> optimizeWithPython(List<Task> tasks, List<Worker> workers, List<Assignment> assignments, LocalDate date, List<UnassignedTaskDTO> unassignedTasksOut) throws Exception {
         // Build request JSON
         Map<String, Object> req = new HashMap<>();
         req.put("date", date.toString());
@@ -102,6 +103,7 @@ public class PythonOptimizerClient {
                 taskName = taskOpt.map(Task::getTaskName).orElse(taskId);
             }
             TaskAssignmentDTO dto = new TaskAssignmentDTO(
+                    null, // DB id not available from Python response
                     taskId,
                     taskName,
                     LocalDateTime.parse((String) a.get("start")),
@@ -112,7 +114,14 @@ public class PythonOptimizerClient {
             workerMap.computeIfAbsent(workerId, k -> new ArrayList<>()).add(dto);
         }
         // Handle unassigned_tasks as a separate list, not mapped to any worker
-        List<String> unassignedTasks = (List<String>) resp.getOrDefault("unassigned_tasks", new ArrayList<>());
+        List<Map<String, Object>> unassignedTasksRaw = (List<Map<String, Object>>) resp.getOrDefault("unassigned_tasks", new ArrayList<>());
+        List<UnassignedTaskDTO> unassignedTasks = new ArrayList<>();
+        for (Map<String, Object> ut : unassignedTasksRaw) {
+            String id = String.valueOf(ut.get("id"));
+            int remaining_units = ((Number) ut.get("remaining_units")).intValue();
+            String task_name = ut.get("task_name") != null ? String.valueOf(ut.get("task_name")) : id;
+            unassignedTasks.add(new UnassignedTaskDTO(id, remaining_units, task_name));
+        }
         if (unassignedTasksOut != null) {
             unassignedTasksOut.clear();
             unassignedTasksOut.addAll(unassignedTasks);
