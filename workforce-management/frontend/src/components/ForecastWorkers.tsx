@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import axios from 'axios';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -12,7 +13,6 @@ import {
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-const allowedMonths = [2, 5, 8, 11];
 
 type TaskAllocation = {
   task_name: string;
@@ -32,7 +32,7 @@ type ForecastData = {
 
 const ForecastWorkers: React.FC = () => {
   const [expectedOrders, setExpectedOrders] = useState('10000000');
-  const [forecastDate, setForecastDate] = useState('');
+  const [targetMonth, setTargetMonth] = useState('09');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [forecast, setForecast] = useState<ForecastData | null>(null);
@@ -48,23 +48,21 @@ const handleForecast = async () => {
       return;
     }
 
-    // Date validation
-    if (!forecastDate) {
-      setDateError('Please provide the date on which supersale event happens.');
+    // Month validation
+    if (!targetMonth) {
+      setDateError('Please select the target month for the supersale event.');
       return;
-    } else {
-      const month = new Date(forecastDate).getMonth();
-      if (!allowedMonths.includes(month)) {
-        setDateError('Supersale events only happen in March, June, September, or December. Please select a valid date.');
-        return;
-      }
     }
+
+    // Format date as YYYY-MM-DD (first day of selected month)
+    const year = new Date().getFullYear();
+    const formattedDate = `${year}-${targetMonth}-01`;
 
     setLoading(true);
     try {
       const response = await axios.post<ForecastData>('http://127.0.0.1:5001/forecast', {
         expectedOrders: Number(expectedOrders),
-        forecastDate: forecastDate,
+        forecastDate: formattedDate,
       });
       setForecast(response.data);
     } catch (err: any) {
@@ -104,22 +102,22 @@ const handleForecast = async () => {
         scales: {
           y: {
             beginAtZero: true,
-            title: { 
-              display: true, 
+            title: {
+              display: true,
               text: 'Number of Workers',
-              font: { weight: 'bold', size: 16 }
+              font: { weight: 'bold' as const, size: 16 }
             }
           },
           x: {
-            title: { 
-              display: true, 
+            title: {
+              display: true,
               text: 'Task',
-              font: { weight: 'bold', size: 16 }
+              font: { weight: 'bold' as const, size: 16 }
             }
           },
         },
       };
-      
+
 
   return (
     <div className="container">
@@ -155,12 +153,32 @@ const handleForecast = async () => {
           color: #555;
         }
         .input-section input[type="number"],
-        .input-section input[type="date"] {
-          padding: 10px;
-          border: 1px solid #ddd;
+        .input-section .MuiFormControl-root {
+          padding: 0;
+          border: none;
           border-radius: 4px;
           width: 200px;
           box-sizing: border-box;
+          vertical-align: middle;
+        }
+        .input-section .MuiInputLabel-root {
+          font-weight: bold;
+          color: #555;
+          background: #fff;
+          padding-left: 4px;
+        }
+        .input-section .MuiSelect-select {
+          padding: 10px !important;
+          font-size: 16px;
+          min-height: 40px !important;
+          display: flex;
+          align-items: center;
+        }
+        .input-section .MuiMenuItem-root {
+          font-size: 16px;
+          height: 40px;
+          display: flex;
+          align-items: center;
         }
         .input-section button {
           padding: 10px 20px;
@@ -251,20 +269,49 @@ const handleForecast = async () => {
           placeholder="e.g., 10000000"
           value={expectedOrders}
           onChange={e => setExpectedOrders(e.target.value)}
+          style={{ height: '40px', width: '200px', padding: '10px', borderRadius: '4px', border: '1px solid #ddd', boxSizing: 'border-box', fontSize: '16px', verticalAlign: 'middle' }}
         />
 
-        <label htmlFor="forecastDate">
-          Target Date (Only March, June, September, December allowed):
-        </label>
-        <input
-          type="date"
-          id="forecastDate"
-          value={forecastDate}
-          onChange={e => {
-            setForecastDate(e.target.value);
-            setDateError(''); // Clear error on change
-          }}
-        />
+        <FormControl variant="outlined" sx={{ width: 200 }}>
+          <InputLabel id="target-month-label" sx={{ backgroundColor: '#fff', px: 0.5 }}>Target Month</InputLabel>
+          <Select
+            labelId="target-month-label"
+            value={targetMonth}
+            label="Target Month"
+            onChange={e => {
+              setTargetMonth(e.target.value);
+              setDateError('');
+            }}
+            sx={{
+              height: '40px',
+              padding: '10px',
+              borderRadius: '4px',
+              backgroundColor: '#fff',
+              boxSizing: 'border-box',
+              fontSize: '16px',
+              verticalAlign: 'middle',
+              '& .MuiSelect-select': {
+                padding: '10px',
+                display: 'flex',
+                alignItems: 'center',
+              },
+            }}
+            MenuProps={{
+              PaperProps: {
+                style: {
+                  maxHeight: 120,
+                  width: 200,
+                },
+              },
+            }}
+          >
+            {['09', '12'].map(m => (
+              <MenuItem key={m} value={m} sx={{ fontSize: '16px', height: '40px', display: 'flex', alignItems: 'center' }}>
+                {m === '09' ? `September ${new Date().getFullYear()}` : `December ${new Date().getFullYear()}`}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         <button
           onClick={handleForecast}
