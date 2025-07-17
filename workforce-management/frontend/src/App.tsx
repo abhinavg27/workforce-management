@@ -5,7 +5,6 @@ import DashboardPage from './pages/DashboardPage';
 import WorkersPage from './pages/WorkersPage';
 import TasksPage from './pages/TasksPage';
 import AssignmentsPage from './pages/AssignmentsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
 import ForecastsPage from './pages/ForecastsPage';
 import './App.css';
 import { useAppDispatch } from './hooks';
@@ -33,7 +32,6 @@ function App() {
           <Route path="workers" element={<WorkersPage />} />
           <Route path="tasks" element={<TasksPage />} />
           <Route path="assignments" element={<AssignmentsPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="forecasts" element={<ForecastsPage />} />
         </Route>
       </Routes>

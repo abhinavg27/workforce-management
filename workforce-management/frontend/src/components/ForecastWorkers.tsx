@@ -47,7 +47,7 @@ const ForecastWorkers: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post<ForecastData>('http://127.0.0.1:5000/forecast', {
+      const response = await axios.post<ForecastData>('http://127.0.0.1:5001/forecast', {
         expectedOrders: Number(expectedOrders),
         forecastDate: forecastDate || null,
       });

@@ -4,7 +4,6 @@ import Grid from '@mui/material/Grid';
 import WorkerManagement from './WorkerManagement';
 import TaskManagement from './TaskManagement';
 import AssignmentManagement from './AssignmentManagement';
-import AnalyticsDashboard from './AnalyticsDashboard';
 
 const Dashboard: React.FC = () => {
   return (
@@ -26,11 +25,6 @@ const Dashboard: React.FC = () => {
         <Grid gridColumn="span 4">
           <Paper sx={{ p: 2 }}>
             <AssignmentManagement />
-          </Paper>
-        </Grid>
-        <Grid gridColumn="span 12">
-          <Paper sx={{ p: 2, mt: 2 }}>
-            <AnalyticsDashboard />
           </Paper>
         </Grid>
       </Grid>
