@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { fetchSkills } from '../skillShiftApi';
 import { useAppDispatch } from '../hooks';
 import { updateSkills } from '../slices/skillSlice';
+import { fetchAssignments } from '../api';
 
 export const Chatbot = () => {
   const reduxState = useSelector(state => state);
@@ -16,6 +17,7 @@ export const Chatbot = () => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
+    fetchAssignments()
     fetchSkills().then(skills => {
       dispatch(updateSkills(skills));
     }).catch(err => {
@@ -77,8 +79,10 @@ export const Chatbot = () => {
         >
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
             <circle cx="16" cy="16" r="16" fill="#4f8cff" />
-            <path d="M10 13h12v6a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2v-6z" fill="#fff"/>
-            <rect x="10" y="11" width="12" height="4" rx="2" fill="#fff"/>
+            <path d="M8 20v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 3v-3a2 2 0 0 1-2-2z" fill="#fff"/>
+            <circle cx="13" cy="16" r="1.2" fill="#4f8cff" />
+            <circle cx="16" cy="16" r="1.2" fill="#4f8cff" />
+            <circle cx="19" cy="16" r="1.2" fill="#4f8cff" />
           </svg>
         </button>
       )}
@@ -88,7 +92,7 @@ export const Chatbot = () => {
           <div style={styles.overlay} onClick={handleClose} />
           <div style={styles.container}>
             <div style={styles.header}>
-              WMS Chatbot
+              WorkFlow Buddy
               <button
                 style={styles.closeBtn}
                 aria-label="Close chat"
