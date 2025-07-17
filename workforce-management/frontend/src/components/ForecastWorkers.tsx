@@ -95,22 +95,31 @@ const handleForecast = async () => {
       }
     : undefined;
 
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      title: { display: true, text: 'Worker Allocation by Task' },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: { display: true, text: 'Number of Workers' },
-      },
-      x: {
-        title: { display: true, text: 'Task' },
-      },
-    },
-  };
+    const chartOptions = {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'Worker Allocation by Task' },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { 
+              display: true, 
+              text: 'Number of Workers',
+              font: { weight: 'bold', size: 16 }
+            }
+          },
+          x: {
+            title: { 
+              display: true, 
+              text: 'Task',
+              font: { weight: 'bold', size: 16 }
+            }
+          },
+        },
+      };
+      
 
   return (
     <div className="container">
@@ -216,6 +225,7 @@ const handleForecast = async () => {
           list-style-type: disc;
           padding-left: 20px;
           margin-top: 15px;
+          text-align: left;
         }
         .assumptionsList li {
           margin-bottom: 5px;
