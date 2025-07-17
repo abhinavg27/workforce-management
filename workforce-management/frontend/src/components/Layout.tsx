@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Tasks', path: '/tasks' },
   { label: 'Assignments', path: '/assignments' },
   { label: 'Analytics', path: '/analytics' },
+  { label: 'Forecasts', path: '/forecasts' },
 ];
 
 const Layout: React.FC = () => {
