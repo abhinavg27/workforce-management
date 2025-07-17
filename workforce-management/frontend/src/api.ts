@@ -31,6 +31,11 @@ export const fetchAssignments = async () => {
   return res.data;
 };
 
+export const fetchForecasts = async () => {
+  const res = await axios.get(`${API_BASE}/forecasts`);
+  return res.data;
+};
+
 export const addAssignment = async (assignment: { workerId: number; taskId: number; assignedAt?: string }) => {
   const res = await axios.post(`${API_BASE}/assignments`, assignment);
   return res.data;
