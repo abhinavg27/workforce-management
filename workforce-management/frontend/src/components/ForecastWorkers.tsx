@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+const allowedMonths = [2, 5, 8, 11];
 
 type TaskAllocation = {
   task_name: string;
@@ -35,9 +36,11 @@ const ForecastWorkers: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [forecast, setForecast] = useState<ForecastData | null>(null);
+  const [dateError, setDateError] = useState('');
 
-  const handleForecast = async () => {
+const handleForecast = async () => {
     setError('');
+    setDateError('');
     setForecast(null);
 
     if (!expectedOrders || isNaN(Number(expectedOrders)) || Number(expectedOrders) <= 0) {
@@ -45,11 +48,23 @@ const ForecastWorkers: React.FC = () => {
       return;
     }
 
+    // Date validation
+    if (!forecastDate) {
+      setDateError('Please provide the date on which supersale event happens.');
+      return;
+    } else {
+      const month = new Date(forecastDate).getMonth();
+      if (!allowedMonths.includes(month)) {
+        setDateError('Supersale events only happen in March, June, September, or December. Please select a valid date.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const response = await axios.post<ForecastData>('http://127.0.0.1:5001/forecast', {
         expectedOrders: Number(expectedOrders),
-        forecastDate: forecastDate || null,
+        forecastDate: forecastDate,
       });
       setForecast(response.data);
     } catch (err: any) {
@@ -62,6 +77,7 @@ const ForecastWorkers: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   // Chart data preparation
   const chartData = forecast
@@ -134,7 +150,7 @@ const ForecastWorkers: React.FC = () => {
           padding: 10px;
           border: 1px solid #ddd;
           border-radius: 4px;
-          width: 400px;
+          width: 200px;
           box-sizing: border-box;
         }
         .input-section button {
@@ -226,17 +242,28 @@ const ForecastWorkers: React.FC = () => {
           value={expectedOrders}
           onChange={e => setExpectedOrders(e.target.value)}
         />
-        <label htmlFor="forecastDate">Target Date (DD-MM-YYYY, optional):</label>
+
+        <label htmlFor="forecastDate">
+          Target Date (Only March, June, September, December allowed):
+        </label>
         <input
           type="date"
           id="forecastDate"
           value={forecastDate}
-          onChange={e => setForecastDate(e.target.value)}
+          onChange={e => {
+            setForecastDate(e.target.value);
+            setDateError(''); // Clear error on change
+          }}
         />
-        <button onClick={handleForecast} disabled={loading}>
+
+        <button
+          onClick={handleForecast}
+          disabled={loading}
+        >
           Get Forecast
         </button>
       </div>
+      {dateError && <div className="error-message">{dateError}</div>}
       {loading && <div className="loading">Loading forecast...</div>}
       {error && <div className="error-message">{error}</div>}
       {forecast && (
