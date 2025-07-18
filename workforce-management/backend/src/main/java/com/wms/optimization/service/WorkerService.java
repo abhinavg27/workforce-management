@@ -12,7 +12,22 @@ public class WorkerService {
     private final WorkerMapper workerMapper;
 
     public List<Worker> getAllWorkers() {
-        return workerMapper.selectAllWorkersWithDetails();
+        List<Worker> workers = workerMapper.selectAllWorkersWithDetails();
+        // Ensure only one shift per worker per day
+        for (Worker worker : workers) {
+            if (worker.getShifts() != null && !worker.getShifts().isEmpty()) {
+                // Use a map to filter by dayOfWeek
+                java.util.Map<String, com.wms.optimization.entity.ShiftInfo> dayShiftMap = new java.util.HashMap<>();
+                for (com.wms.optimization.entity.ShiftInfo shift : worker.getShifts()) {
+                    // Only keep the first shift for each dayOfWeek
+                    if (!dayShiftMap.containsKey(shift.getDayOfWeek())) {
+                        dayShiftMap.put(shift.getDayOfWeek(), shift);
+                    }
+                }
+                worker.setShifts(new java.util.ArrayList<>(dayShiftMap.values()));
+            }
+        }
+        return workers;
     }
 
     public Worker getWorkerById(String workerId) {

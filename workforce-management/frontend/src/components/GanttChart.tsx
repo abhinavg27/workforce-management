@@ -17,7 +17,17 @@ export interface WorkerAssignmentScheduleDTO {
   workerId: string;
   workerName: string;
   assignments: TaskAssignmentDTO[];
+  shiftName?: string;
+  shiftStart?: string;
+  shiftEnd?: string;
   unassignedTasks?: string[];
+  shifts?: Array<{
+    shiftId: number;
+    shiftName: string;
+    startTime: string;
+    endTime: string;
+    dayOfWeek: string;
+  }>;
 }
 
 
@@ -240,19 +250,35 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
         <Box sx={{ position: 'relative', width: '100%', minWidth: 700, maxWidth: 'none' }}>
           {/* Chart rows: flex row, left = worker name, right = chart */}
           {schedules.map((worker, workerIdx) => {
-            // Try to infer shift info from the first assignment (if available)
-            let shiftLabel = '';
-            if (worker.assignments && worker.assignments.length > 0) {
-              // Find earliest assignment (not break)
-              const first = worker.assignments.find(a => !a.isBreak) || worker.assignments[0];
-              const start = new Date(first.startTime);
-              // Try to find the last assignment (not break) for end time
-              const last = [...worker.assignments].reverse().find(a => !a.isBreak) || worker.assignments[worker.assignments.length - 1];
-              const end = new Date(last.endTime);
-              // Format as HH:mm
-              const pad = (n: number) => n.toString().padStart(2, '0');
-              const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-              shiftLabel = `${fmt(start)}–${fmt(end)}`;
+            // Always use real shift info from worker.shifts if available
+            let shiftName = worker.shiftName || '';
+            let shiftStart = worker.shiftStart;
+            let shiftEnd = worker.shiftEnd;
+            // If worker.shifts exists, use the first shift for display
+            if (worker.shifts && worker.shifts.length > 0) {
+              const shift = worker.shifts[0];
+              shiftName = shift.shiftName || '';
+              // Combine date with shift start/end for correct placement
+              // Assume assignments are for a single day, use assignment date
+              let dateStr = '';
+              if (worker.assignments && worker.assignments.length > 0) {
+                dateStr = worker.assignments[0].startTime.split('T')[0];
+              } else {
+                // fallback to today
+                const today = new Date();
+                dateStr = today.toISOString().split('T')[0];
+              }
+              shiftStart = `${dateStr}T${shift.startTime}`;
+              shiftEnd = `${dateStr}T${shift.endTime}`;
+            }
+            // Format as HH:mm
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            let shiftLabelFinal = '';
+            if (shiftStart && shiftEnd) {
+              const startDate = new Date(shiftStart);
+              const endDate = new Date(shiftEnd);
+              shiftLabelFinal = `${shiftName ? shiftName + ': ' : ''}${fmt(startDate)}–${fmt(endDate)}`;
             }
             return (
               <Box key={worker.workerId} sx={{ display: 'flex', alignItems: 'center', mb: 2, width: '100%', minWidth: 700, maxWidth: 'none' }}>
@@ -267,14 +293,41 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                   >
                     {worker.workerName} ({worker.workerId})
                   </Typography>
-                  {shiftLabel && (
+                  {shiftLabelFinal && (
                     <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 500, mt: 0.2 }}>
-                      Shift: {shiftLabel}
+                      Shift: {shiftLabelFinal}
                     </Typography>
                   )}
                 </Box>
                 {/* Gantt chart bars, full width */}
                 <Box sx={{ position: 'relative', flex: 1, minHeight: 36, background: '#f5f5f5', borderRadius: 2, minWidth: 300, py: 0.5 }} role="list" aria-label={`Assignments for ${worker.workerName}`}>
+                  {/* Shift start/end markers */}
+                  {shiftStart && (
+                    <Box sx={{
+                      position: 'absolute',
+                      left: getPercent(shiftStart, shiftStart).left,
+                      top: 0,
+                      height: '100%',
+                      width: '2px',
+                      background: '#1976d2',
+                      zIndex: 3,
+                      borderRadius: 1,
+                      opacity: 0.7,
+                    }} />
+                  )}
+                  {shiftEnd && (
+                    <Box sx={{
+                      position: 'absolute',
+                      left: getPercent(shiftEnd, shiftEnd).left,
+                      top: 0,
+                      height: '100%',
+                      width: '2px',
+                      background: '#d32f2f',
+                      zIndex: 3,
+                      borderRadius: 1,
+                      opacity: 0.7,
+                    }} />
+                  )}
                   {assignLanes(worker.assignments).map((lane, laneIdx) => (
                     <Box key={laneIdx} sx={{ position: 'relative', height: 36, mb: 0.5, overflow: 'visible', display: 'flex', alignItems: 'center' }}>
                       {lane.map((a, idx) => {
@@ -344,14 +397,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
             <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fffde7', borderRadius: 4 }}>
               <thead>
                 <tr style={{ background: '#ffe082' }}>
+                  <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>S. No.</th>
                   <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>Task ID</th>
                   <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>Task Name</th>
                   <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>Units Unassigned</th>
                 </tr>
               </thead>
               <tbody>
-                {unassignedTasks.map((task) => (
+                {unassignedTasks.map((task, idx) => (
                   <tr key={task.id}>
+                    <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{idx + 1}</td>
                     <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{task.id}</td>
                     <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{task.task_name || '-'}</td>
                     <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{task.remaining_units}</td>

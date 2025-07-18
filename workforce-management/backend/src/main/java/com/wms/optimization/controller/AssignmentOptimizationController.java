@@ -62,11 +62,43 @@ public class AssignmentOptimizationController {
      */
     @GetMapping
     public AssignmentOptimizationResultDTO getCurrentAssignments() {
-        List<Assignment> allAssignments = assignmentMapper.selectAllAssignments();
+        // For GET, call the same optimize logic as POST, but do not delete/insert assignments
+        // For GET, use shift info from assignment table
+        List<Assignment> assignments = assignmentMapper.selectAllAssignments();
         // Group assignments by worker
         Map<String, WorkerAssignmentScheduleDTO> workerMap = new LinkedHashMap<>();
-        for (Assignment a : allAssignments) {
-            WorkerAssignmentScheduleDTO workerSchedule = workerMap.computeIfAbsent(a.getWorkerId(), k -> new WorkerAssignmentScheduleDTO(k, a.getWorkerName(), new ArrayList<>()));
+        for (Assignment a : assignments) {
+            WorkerAssignmentScheduleDTO workerSchedule = workerMap.get(a.getWorkerId());
+            com.wms.optimization.entity.ShiftInfo shift = null;
+            if (a.getShiftName() != null && a.getShiftStart() != null && a.getShiftEnd() != null) {
+                shift = new com.wms.optimization.entity.ShiftInfo();
+                shift.setShiftName(a.getShiftName());
+                shift.setStartTime(a.getShiftStart());
+                shift.setEndTime(a.getShiftEnd());
+                shift.setDayOfWeek("");
+            }
+            if (workerSchedule == null) {
+                List<com.wms.optimization.entity.ShiftInfo> shifts = new ArrayList<>();
+                if (shift != null) {
+                    shifts.add(shift);
+                }
+                workerSchedule = new WorkerAssignmentScheduleDTO(a.getWorkerId(), a.getWorkerName(), new ArrayList<>(), shifts);
+                workerMap.put(a.getWorkerId(), workerSchedule);
+            } else {
+                // Add shift if not already present
+                if (shift != null) {
+                    boolean exists = false;
+                    for (com.wms.optimization.entity.ShiftInfo s : workerSchedule.getShifts()) {
+                        if (s.getShiftName().equals(shift.getShiftName()) && s.getStartTime().equals(shift.getStartTime()) && s.getEndTime().equals(shift.getEndTime())) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        workerSchedule.getShifts().add(shift);
+                    }
+                }
+            }
             TaskAssignmentDTO dto = new TaskAssignmentDTO(
                     a.getId(),
                     a.getTaskId(),
@@ -79,6 +111,7 @@ public class AssignmentOptimizationController {
             workerSchedule.getAssignments().add(dto);
         }
         List<WorkerAssignmentScheduleDTO> schedules = new ArrayList<>(workerMap.values());
+        // Unassigned tasks
         List<UnassignedTaskDTO> unassignedTasks = unassignedTaskMapper.selectAllUnassignedTasks();
         // Map task IDs to names for unassigned tasks
         List<Task> allTasks = taskMapper.selectAllTasks();
@@ -109,6 +142,16 @@ public class AssignmentOptimizationController {
         List<Assignment> assignments = new ArrayList<>();
         AssignmentOptimizationResultDTO result = optimizationService.optimizeAssignments(tasks, workers, assignments);
         for (WorkerAssignmentScheduleDTO schedule : result.getSchedules()) {
+            // Get shift info for this worker for the day
+            String shiftName = null;
+            String shiftStart = null;
+            String shiftEnd = null;
+            if (schedule.getShifts() != null && !schedule.getShifts().isEmpty()) {
+                com.wms.optimization.entity.ShiftInfo shift = schedule.getShifts().get(0);
+                shiftName = shift.getShiftName();
+                shiftStart = shift.getStartTime();
+                shiftEnd = shift.getEndTime();
+            }
             for (TaskAssignmentDTO dto : schedule.getAssignments()) {
                 String tid = dto.getTaskId();
                 boolean isBreak = dto.isBreak();
@@ -127,6 +170,9 @@ public class AssignmentOptimizationController {
                 a.setBreak(dto.isBreak());
                 a.setStatus("PENDING");
                 a.setFeedback(null);
+                a.setShiftName(shiftName);
+                a.setShiftStart(shiftStart);
+                a.setShiftEnd(shiftEnd);
                 assignmentMapper.insertAssignment(a);
             }
         }

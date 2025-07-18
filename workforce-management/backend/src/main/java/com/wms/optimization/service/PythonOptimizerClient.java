@@ -129,7 +129,23 @@ public class PythonOptimizerClient {
         List<WorkerAssignmentScheduleDTO> result = new ArrayList<>();
         for (Worker w : workers) {
             List<TaskAssignmentDTO> list = workerMap.getOrDefault(w.getWorkerId(), new ArrayList<>());
-            result.add(new WorkerAssignmentScheduleDTO(w.getWorkerId(), w.getWorkerName(), list));
+            // Only send the shift for the current day
+            List<com.wms.optimization.entity.ShiftInfo> shiftsForDay = new ArrayList<>();
+            String todayDayOfWeek = date.getDayOfWeek().toString(); // e.g. "WEDNESDAY"
+            String todayAbbr = todayDayOfWeek.substring(0, 3); // e.g. "WED"
+            for (com.wms.optimization.entity.ShiftInfo s : w.getShifts()) {
+                if (s.getDayOfWeek() == null) continue;
+                String shiftDay = s.getDayOfWeek().trim().toUpperCase();
+                if (shiftDay.equals(todayDayOfWeek) || shiftDay.startsWith(todayAbbr)) {
+                    shiftsForDay.add(s);
+                    break;
+                }
+            }
+            if (shiftsForDay.isEmpty() && !w.getShifts().isEmpty()) {
+                // fallback: use first shift if none match
+                shiftsForDay.add(w.getShifts().get(0));
+            }
+            result.add(new WorkerAssignmentScheduleDTO(w.getWorkerId(), w.getWorkerName(), list, shiftsForDay));
         }
         return result;
     }

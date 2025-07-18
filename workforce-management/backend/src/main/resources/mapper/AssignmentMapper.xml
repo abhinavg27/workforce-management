@@ -13,19 +13,23 @@
         <result property="isBreak" column="is_break" />
         <result property="status" column="status" />
         <result property="feedback" column="feedback" />
+        <result property="shiftName" column="shift_name" />
+        <result property="shiftStart" column="shift_start" />
+        <result property="shiftEnd" column="shift_end" />
     </resultMap>
 
+
     <select id="selectAllAssignments" resultMap="AssignmentResultMap">
-        SELECT id, worker_id, worker_name, task_id, task_name, start_time, end_time, units_assigned, is_break, status, feedback FROM assignment
+        SELECT id, worker_id, worker_name, task_id, task_name, start_time, end_time, units_assigned, is_break, status, feedback, shift_name, shift_start, shift_end FROM assignment
     </select>
 
     <select id="selectAssignmentById" resultMap="AssignmentResultMap">
-        SELECT id, worker_id, worker_name, task_id, task_name, start_time, end_time, units_assigned, is_break, status, feedback FROM assignment WHERE id = #{id}
+        SELECT id, worker_id, worker_name, task_id, task_name, start_time, end_time, units_assigned, is_break, status, feedback, shift_name, shift_start, shift_end FROM assignment WHERE id = #{id}
     </select>
 
     <insert id="insertAssignment" parameterType="com.wms.optimization.entity.Assignment">
-        INSERT INTO assignment(worker_id, worker_name, task_id, task_name, start_time, end_time, units_assigned, is_break, status, feedback)
-        VALUES(#{workerId}, #{workerName}, #{taskId}, #{taskName}, #{startTime}, #{endTime}, #{unitsAssigned}, #{isBreak}, #{status}, #{feedback})
+        INSERT INTO assignment(worker_id, worker_name, task_id, task_name, start_time, end_time, units_assigned, is_break, status, feedback, shift_name, shift_start, shift_end)
+        VALUES(#{workerId}, #{workerName}, #{taskId}, #{taskName}, #{startTime}, #{endTime}, #{unitsAssigned}, #{isBreak}, #{status}, #{feedback}, #{shiftName}, #{shiftStart}, #{shiftEnd})
     </insert>
 
     <update id="updateAssignmentStatus" parameterType="com.wms.optimization.entity.Assignment">
