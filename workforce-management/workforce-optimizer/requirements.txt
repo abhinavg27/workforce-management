@@ -1,4 +1,4 @@
 fastapi
 uvicorn
-google-or-tools
+ortools
 pydantic

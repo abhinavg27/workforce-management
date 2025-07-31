@@ -4,6 +4,7 @@ import { Box, Typography, Paper } from '@mui/material';
 import TaskDetailsDialog from './TaskDetailsDialog';
 
 export interface TaskAssignmentDTO {
+  id?: number;
   taskId: string | null;
   taskName: string;
   startTime: string;
@@ -16,11 +17,26 @@ export interface WorkerAssignmentScheduleDTO {
   workerId: string;
   workerName: string;
   assignments: TaskAssignmentDTO[];
+  shiftName?: string;
+  shiftStart?: string;
+  shiftEnd?: string;
   unassignedTasks?: string[];
+  shifts?: Array<{
+    shiftId: number;
+    shiftName: string;
+    startTime: string;
+    endTime: string;
+    dayOfWeek: string;
+  }>;
 }
 
-interface GanttChartProps {
+
+import type { UnassignedTaskDTO } from '../apiGantt';
+
+export interface GanttChartProps {
   schedules: WorkerAssignmentScheduleDTO[];
+  unassignedTasks?: UnassignedTaskDTO[];
+  onRemoveAssignment?: (workerId: string, assignment: TaskAssignmentDTO) => void;
 }
 
 
@@ -83,15 +99,16 @@ function useTaskDependencyMap() {
   return depMap;
 }
 
-const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
+const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = [], onRemoveAssignment }) => {
   // State for task details dialog
-  const [selectedTask, setSelectedTask] = useState<TaskAssignmentDTO | null>(null);
+  const [selectedTask, setSelectedTask] = useState<{task: TaskAssignmentDTO, workerId: string} | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   // Dependency map
   const depMap = useTaskDependencyMap();
 
-  // Find min/max time for scaling
-  const allAssignments = schedules.flatMap(w => w.assignments);
+  // Defensive: schedules may be undefined/null
+  const safeSchedules = Array.isArray(schedules) ? schedules : [];
+  const allAssignments = safeSchedules.flatMap(w => Array.isArray(w.assignments) ? w.assignments : []);
   if (allAssignments.length === 0) return <Typography>No assignments</Typography>;
 
   // Always show 24 hours (00:00 to 23:59)
@@ -121,7 +138,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
     sorted.forEach(task => {
       let placed = false;
       for (const lane of lanes) {
-        // If no overlap with last in lane
+        // If no overlap or exactly continuous with last in lane
         const last = lane[lane.length - 1];
         if (new Date(task.startTime).getTime() >= new Date(last.endTime).getTime()) {
           lane.push(task);
@@ -233,19 +250,35 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
         <Box sx={{ position: 'relative', width: '100%', minWidth: 700, maxWidth: 'none' }}>
           {/* Chart rows: flex row, left = worker name, right = chart */}
           {schedules.map((worker, workerIdx) => {
-            // Try to infer shift info from the first assignment (if available)
-            let shiftLabel = '';
-            if (worker.assignments && worker.assignments.length > 0) {
-              // Find earliest assignment (not break)
-              const first = worker.assignments.find(a => !a.isBreak) || worker.assignments[0];
-              const start = new Date(first.startTime);
-              // Try to find the last assignment (not break) for end time
-              const last = [...worker.assignments].reverse().find(a => !a.isBreak) || worker.assignments[worker.assignments.length - 1];
-              const end = new Date(last.endTime);
-              // Format as HH:mm
-              const pad = (n: number) => n.toString().padStart(2, '0');
-              const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-              shiftLabel = `${fmt(start)}–${fmt(end)}`;
+            // Always use real shift info from worker.shifts if available
+            let shiftName = worker.shiftName || '';
+            let shiftStart = worker.shiftStart;
+            let shiftEnd = worker.shiftEnd;
+            // If worker.shifts exists, use the first shift for display
+            if (worker.shifts && worker.shifts.length > 0) {
+              const shift = worker.shifts[0];
+              shiftName = shift.shiftName || '';
+              // Combine date with shift start/end for correct placement
+              // Assume assignments are for a single day, use assignment date
+              let dateStr = '';
+              if (worker.assignments && worker.assignments.length > 0) {
+                dateStr = worker.assignments[0].startTime.split('T')[0];
+              } else {
+                // fallback to today
+                const today = new Date();
+                dateStr = today.toISOString().split('T')[0];
+              }
+              shiftStart = `${dateStr}T${shift.startTime}`;
+              shiftEnd = `${dateStr}T${shift.endTime}`;
+            }
+            // Format as HH:mm
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            let shiftLabelFinal = '';
+            if (shiftStart && shiftEnd) {
+              const startDate = new Date(shiftStart);
+              const endDate = new Date(shiftEnd);
+              shiftLabelFinal = `${shiftName ? shiftName + ': ' : ''}${fmt(startDate)}–${fmt(endDate)}`;
             }
             return (
               <Box key={worker.workerId} sx={{ display: 'flex', alignItems: 'center', mb: 2, width: '100%', minWidth: 700, maxWidth: 'none' }}>
@@ -260,16 +293,43 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
                   >
                     {worker.workerName} ({worker.workerId})
                   </Typography>
-                  {shiftLabel && (
+                  {shiftLabelFinal && (
                     <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 500, mt: 0.2 }}>
-                      Shift: {shiftLabel}
+                      Shift: {shiftLabelFinal}
                     </Typography>
                   )}
                 </Box>
                 {/* Gantt chart bars, full width */}
                 <Box sx={{ position: 'relative', flex: 1, minHeight: 36, background: '#f5f5f5', borderRadius: 2, minWidth: 300, py: 0.5 }} role="list" aria-label={`Assignments for ${worker.workerName}`}>
+                  {/* Shift start/end markers */}
+                  {shiftStart && (
+                    <Box sx={{
+                      position: 'absolute',
+                      left: getPercent(shiftStart, shiftStart).left,
+                      top: 0,
+                      height: '100%',
+                      width: '2px',
+                      background: '#1976d2',
+                      zIndex: 3,
+                      borderRadius: 1,
+                      opacity: 0.7,
+                    }} />
+                  )}
+                  {shiftEnd && (
+                    <Box sx={{
+                      position: 'absolute',
+                      left: getPercent(shiftEnd, shiftEnd).left,
+                      top: 0,
+                      height: '100%',
+                      width: '2px',
+                      background: '#d32f2f',
+                      zIndex: 3,
+                      borderRadius: 1,
+                      opacity: 0.7,
+                    }} />
+                  )}
                   {assignLanes(worker.assignments).map((lane, laneIdx) => (
-                    <Box key={laneIdx} sx={{ position: 'relative', height: 32, mb: 0.5 }}>
+                    <Box key={laneIdx} sx={{ position: 'relative', height: 36, mb: 0.5, overflow: 'visible', display: 'flex', alignItems: 'center' }}>
                       {lane.map((a, idx) => {
                         const { left, width } = getPercent(a.startTime, a.endTime);
                         return (
@@ -283,13 +343,13 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
                             arrow
                             placement="top"
                           >
-                            <Paper
+                              <Paper
                               sx={{
                                 position: 'absolute',
                                 left,
                                 width,
                                 height: 28,
-                                top: 2,
+                                top: 4,
                                 bgcolor: getTaskColor(a),
                                 color: '#222',
                                 px: 1,
@@ -299,15 +359,19 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
                                 cursor: 'pointer',
                                 transition: 'box-shadow 0.2s',
                                 zIndex: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                maxWidth: '100%',
                               }}
                               elevation={2}
-                              onClick={() => { setSelectedTask(a); setDialogOpen(true); }}
+                              onClick={() => { setSelectedTask({task: a, workerId: worker.workerId}); setDialogOpen(true); }}
                               data-task-id={a.taskId}
                               data-worker-idx={workerIdx}
                               data-lane-idx={laneIdx}
                               data-bar-idx={idx}
                               tabIndex={0}
                               aria-label={a.isBreak ? `Break from ${a.startTime} to ${a.endTime}` : `${a.taskName}, units: ${a.unitsAssigned}, from ${a.startTime} to ${a.endTime}`}
+                              title={a.isBreak ? 'Break' : `${a.taskName} (${a.unitsAssigned})`}
                             >
                               {a.isBreak ? 'Break' : `${a.taskName} (${a.unitsAssigned})`}
                             </Paper>
@@ -321,62 +385,45 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules }) => {
             );
           })}
           {/* SVG overlay for arrows, aligned with chart bars (no left offset) */}
-          <svg width="100%" height={schedules.length * 48} style={{ position: 'absolute', top: 0, left: 120, pointerEvents: 'none', zIndex: 10 }}>
-            {/* For each worker, for each assignment, if dependency exists, draw arrow */}
-            {schedules.map((worker, workerIdx) => {
-              return assignLanes(worker.assignments).flatMap((lane, laneIdx) =>
-                lane.map((a, idx) => {
-                  if (!a.taskId || !depMap[a.taskId]) return null;
-                  // Find the bar for the dependency (could be in any worker)
-                  const depTaskId = depMap[a.taskId];
-                  let depPos: { x: number, y: number } | null = null;
-                  let thisPos: { x: number, y: number } | null = null;
-                  // Find dependency bar position
-                  schedules.forEach((w, wIdx) => {
-                    assignLanes(w.assignments).forEach((l, lIdx) => {
-                      l.forEach((bar, bIdx) => {
-                        if (bar.taskId === depTaskId) {
-                          // End of dependency bar
-                          const { left: depLeft, width: depWidth } = getPercent(bar.startTime, bar.endTime);
-                          depPos = {
-                            x: Number.parseFloat(depLeft) + Number.parseFloat(depWidth),
-                            y: wIdx * 48 + lIdx * 32 + 16,
-                          };
-                        }
-                        if (wIdx === workerIdx && lIdx === laneIdx && bIdx === idx) {
-                          // Start of this bar
-                          const { left } = getPercent(a.startTime, a.endTime);
-                          thisPos = {
-                            x: Number.parseFloat(left),
-                            y: workerIdx * 48 + laneIdx * 32 + 16,
-                          };
-                        }
-                      });
-                    });
-                  });
-                  if (depPos !== null && thisPos !== null) {
-                    const d: { x: number, y: number } = depPos as { x: number, y: number };
-                    const t: { x: number, y: number } = thisPos as { x: number, y: number };
-                    // Draw a simple arrow (line with arrowhead)
-                    return (
-                      <g key={`arrow-${a.taskId}-${depTaskId}`}>
-                        <line x1={d.x} y1={d.y} x2={t.x} y2={t.y} stroke="#e57373" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      </g>
-                    );
-                  }
-                  return null;
-                })
-              );
-            })}
-            <defs>
-              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L8,4 L0,8 L2,4 Z" fill="#e57373" />
-              </marker>
-            </defs>
-          </svg>
+          {/* ...existing code... */}
         </Box>
       </Box>
-      <TaskDetailsDialog open={dialogOpen} onClose={() => setDialogOpen(false)} task={selectedTask} />
+
+      {/* Unassigned Tasks Section */}
+      {unassignedTasks && unassignedTasks.length > 0 && (
+        <Box sx={{ mt: 3, p: 2, background: '#fff3e0', border: '1px solid #ffb300', borderRadius: 2 }}>
+          <Typography variant="h6" color="warning.main" gutterBottom>Unassigned Tasks</Typography>
+          <Box sx={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fffde7', borderRadius: 4 }}>
+              <thead>
+                <tr style={{ background: '#ffe082' }}>
+                  <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>S. No.</th>
+                  <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>Task ID</th>
+                  <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>Task Name</th>
+                  <th style={{ padding: '8px', border: '1px solid #ffb300', textAlign: 'left' }}>Units Unassigned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unassignedTasks.map((task, idx) => (
+                  <tr key={task.id}>
+                    <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{idx + 1}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{task.id}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{task.task_name || '-'}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ffb300' }}>{task.remaining_units}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Box>
+        </Box>
+      )}
+
+      <TaskDetailsDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        task={selectedTask?.task || null}
+        onRemoveAssignment={selectedTask && onRemoveAssignment ? () => onRemoveAssignment(selectedTask.workerId, selectedTask.task) : undefined}
+      />
     </Box>
   );
 };

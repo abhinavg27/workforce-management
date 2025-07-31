@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wms.optimization.mapper.UnassignedTaskMapper">
+
+  <resultMap id="UnassignedTaskDTOResultMap" type="com.wms.optimization.dto.UnassignedTaskDTO">
+    <id property="id" column="id" />
+    <result property="remaining_units" column="remaining_units" />
+    <result property="task_name" column="task_name" />
+  </resultMap>
+
+  <select id="selectAllUnassignedTasks" resultMap="UnassignedTaskDTOResultMap">
+    SELECT * FROM unassigned_task
+  </select>
+
+  <insert id="insertUnassignedTask" parameterType="com.wms.optimization.dto.UnassignedTaskDTO">
+    INSERT INTO unassigned_task (id, remaining_units, task_name)
+    VALUES (#{id}, #{remaining_units}, #{task_name})
+    ON DUPLICATE KEY UPDATE remaining_units = VALUES(remaining_units), task_name = VALUES(task_name)
+  </insert>
+
+  <delete id="deleteAllUnassignedTasks">
+    DELETE FROM unassigned_task
+  </delete>
+
+</mapper>

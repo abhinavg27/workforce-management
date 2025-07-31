@@ -3,15 +3,12 @@ package com.wms.optimization.service;
 
 import com.wms.optimization.dto.WorkerAssignmentScheduleDTO;
 import com.wms.optimization.dto.AssignmentOptimizationResultDTO;
+import com.wms.optimization.dto.UnassignedTaskDTO;
 import com.wms.optimization.entity.Assignment;
-import com.wms.optimization.entity.SkillInfo;
 import com.wms.optimization.entity.Task;
 import com.wms.optimization.entity.Worker;
-import com.wms.optimization.entity.ShiftInfo;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 
 @Service
@@ -25,50 +22,25 @@ public class AssignmentOptimizationService {
         // Use Python microservice for optimization
         try {
             PythonOptimizerClient pythonClient = new PythonOptimizerClient();
-            List<String> unassignedTasks = new ArrayList<>();
+            List<UnassignedTaskDTO> unassignedTasks = new ArrayList<>();
             List<WorkerAssignmentScheduleDTO> schedules = pythonClient.optimizeWithPython(tasks, workers, assignments, LocalDate.now(), unassignedTasks);
+            // Ensure task_name is set for each unassigned task
+            for (UnassignedTaskDTO ut : unassignedTasks) {
+                if (ut.getTask_name() == null || ut.getTask_name().isEmpty()) {
+                    // Try to find task name from tasks list
+                    for (Task t : tasks) {
+                        if (String.valueOf(t.getId()).equals(ut.getId())) {
+                            ut.setTask_name(t.getTaskName());
+                            break;
+                        }
+                    }
+                }
+            }
             return new AssignmentOptimizationResultDTO(schedules, unassignedTasks);
         } catch (Exception e) {
             throw new RuntimeException("Python optimizer failed: " + e.getMessage(), e);
         }
     }
 
-    // Helper class for per-worker scheduling state
-    private static class WorkerScheduleState {
-        Worker worker;
-        int minutesLeft;
-        int workMinutes;
-        int breakMinutes;
-        LocalDateTime shiftStart;
-        LocalDateTime nextAvailableTime;
-        WorkerScheduleState(Worker worker, ShiftInfo shift, int workMinutes, int breakMinutes, LocalTime shiftStartTime, LocalDateTime shiftStartDateTime) {
-            this.worker = worker;
-            this.workMinutes = workMinutes;
-            this.breakMinutes = breakMinutes;
-            this.minutesLeft = workMinutes;
-            this.shiftStart = shiftStartDateTime;
-            this.nextAvailableTime = this.shiftStart;
-        }
-        boolean hasSkill(int skillId) {
-            return worker.getSkills().stream().anyMatch(s -> s.getSkillId() == skillId);
-        }
-        int getSkillScore(int skillId) {
-            return worker.getSkills().stream()
-                         .filter(s -> s.getSkillId() == skillId)
-                         .mapToInt(s -> s.getSkillLevel() * s.getProductivity())
-                         .max().orElse(0);
-        }
-        int getMinutesPerUnit(int skillId) {
-            // For demo: higher productivity = less time per unit
-            int productivity = worker.getSkills().stream()
-                                     .filter(s -> s.getSkillId() == skillId)
-                                     .mapToInt(SkillInfo::getProductivity).max().orElse(50);
-            return Math.max(1, 100 / productivity); // e.g. 100 units/hour at prod=100
-        }
-        int maxUnitsAssignable(Task task, int unitsLeft) {
-            int minutesPerUnit = getMinutesPerUnit(task.getSkillId());
-            int maxUnits = minutesLeft / minutesPerUnit;
-            return Math.min(unitsLeft, maxUnits);
-        }
-    }
+    // Removed unused WorkerScheduleState helper class and related methods/fields
 }

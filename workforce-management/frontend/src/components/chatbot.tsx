@@ -1,14 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { fetchWorkers } from '../api';
-
+import { useSelector } from 'react-redux';
+import { fetchSkills } from '../skillShiftApi';
+import { useAppDispatch } from '../hooks';
+import { updateSkills } from '../slices/skillSlice';
+import { fetchAssignments } from '../api';
 
 export const Chatbot = () => {
+  const reduxState = useSelector(state => state);
   const [messages, setMessages] = useState([
     { sender: 'bot', text: 'Hi! How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    fetchAssignments()
+    fetchSkills().then(skills => {
+      dispatch(updateSkills(skills));
+    }).catch(err => {
+      console.error('Error fetching skills:', err);
+  })}, []);
 
   useEffect(() => {
     if (open) {
@@ -19,17 +33,12 @@ export const Chatbot = () => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    let workerData = null;
-    try {
-      workerData = await fetchWorkers();
-    } catch (err) {
-      workerData = { error: 'Failed to fetch workers' };
-    }
     setMessages(prev => [...prev, { sender: 'user', text: input }]);
     setInput('');
+    setLoading(true);
     const requestBody = {
       message: input,
-      data: workerData
+      data: reduxState
     };
     try {
       const response = await fetch('http://127.0.0.1:5000/analyze', {
@@ -50,7 +59,14 @@ export const Chatbot = () => {
         ...msgs,
         { sender: 'bot', text: 'Sorry, there was an error connecting to the AI service.' }
       ]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setMessages([{ sender: 'bot', text: 'Hi! How can I help you today?' }]);
   };
 
   return (
@@ -63,22 +79,24 @@ export const Chatbot = () => {
         >
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
             <circle cx="16" cy="16" r="16" fill="#4f8cff" />
-            <path d="M10 13h12v6a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2v-6z" fill="#fff"/>
-            <rect x="10" y="11" width="12" height="4" rx="2" fill="#fff"/>
+            <path d="M8 20v-8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 3v-3a2 2 0 0 1-2-2z" fill="#fff"/>
+            <circle cx="13" cy="16" r="1.2" fill="#4f8cff" />
+            <circle cx="16" cy="16" r="1.2" fill="#4f8cff" />
+            <circle cx="19" cy="16" r="1.2" fill="#4f8cff" />
           </svg>
         </button>
       )}
 
       {open && (
         <>
-          <div style={styles.overlay} onClick={() => setOpen(false)} />
+          <div style={styles.overlay} onClick={handleClose} />
           <div style={styles.container}>
             <div style={styles.header}>
-              WMS Chatbot
+              WorkFlow Buddy
               <button
                 style={styles.closeBtn}
                 aria-label="Close chat"
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
               >
                 ×
               </button>
@@ -97,6 +115,16 @@ export const Chatbot = () => {
                   {msg.text}
                 </div>
               ))}
+              {loading && (
+                <div style={{ ...styles.message, alignSelf: 'flex-start', background: '#e5e5ea', color: '#222', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>Thinking</span>
+                  <span className="chatbot-loading-dot" style={{ fontSize: 22, letterSpacing: 1 }}>
+                    <span style={{ animation: 'chatbot-dot 1s infinite' }}>.</span>
+                    <span style={{ animation: 'chatbot-dot 1s infinite 0.2s' }}>.</span>
+                    <span style={{ animation: 'chatbot-dot 1s infinite 0.4s' }}>.</span>
+                  </span>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
             <form style={styles.inputArea} onSubmit={handleSend}>
@@ -107,8 +135,9 @@ export const Chatbot = () => {
                 onChange={e => setInput(e.target.value)}
                 placeholder="Type your message..."
                 autoFocus
+                disabled={loading}
               />
-              <button style={styles.button} type="submit">Send</button>
+              <button style={styles.button} type="submit" disabled={loading}>Send</button>
             </form>
           </div>
         </>

@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import GanttChart from './GanttChart';
 import GanttTable from './GanttTable';
 import type { WorkerAssignmentScheduleDTO } from './GanttChart';
-import { fetchCurrentAssignments, reOptimizeAssignments } from '../apiGantt';
+import { fetchCurrentAssignments, reOptimizeAssignments, removeAssignment } from '../apiGantt';
 import type { UnassignedTaskDTO } from '../apiGantt';
 
 const AssignmentManagement: React.FC = () => {
@@ -16,8 +16,9 @@ const AssignmentManagement: React.FC = () => {
   // On mount, load assignments from DB for Gantt chart
   React.useEffect(() => {
     (async () => {
-      const schedules = await fetchCurrentAssignments();
-      setGanttSchedules(schedules);
+      const result = await fetchCurrentAssignments();
+      setGanttSchedules(result.schedules);
+      setUnassignedTasks(result.unassignedTasks || []);
       setShowGantt(true);
     })();
   }, []);
@@ -72,20 +73,33 @@ const AssignmentManagement: React.FC = () => {
             Export Gantt as PNG
           </Button>
           <Box id="gantt-chart-root">
-            <GanttChart schedules={ganttSchedules} />
+            <GanttChart
+              schedules={ganttSchedules}
+              unassignedTasks={unassignedTasks}
+              onRemoveAssignment={async (workerId, assignment) => {
+                // Remove assignment from worker (frontend state)
+                setGanttSchedules(prev => prev.map(w =>
+                  w.workerId === workerId
+                    ? { ...w, assignments: w.assignments.filter(a => a !== assignment) }
+                    : w
+                ));
+                // Persist removal to backend
+                if (!assignment.isBreak && assignment.taskId && typeof assignment.taskId === 'string') {
+                  await removeAssignment({
+                    assignmentId: assignment.id as number,
+                    taskId: assignment.taskId,
+                    unitsAssigned: assignment.unitsAssigned,
+                    taskName: assignment.taskName || ''
+                  });
+                  // Optionally, re-fetch assignments/unassignedTasks from backend to sync state
+                  const result = await fetchCurrentAssignments();
+                  setGanttSchedules(result.schedules);
+                  setUnassignedTasks(result.unassignedTasks || []);
+                }
+              }}
+            />
           </Box>
-          {unassignedTasks.length > 0 && (
-            <Box sx={{ mt: 2, p: 2, background: '#fff3e0', border: '1px solid #ffb300', borderRadius: 2 }}>
-              <Typography variant="h6" color="warning.main" gutterBottom>Unassigned Tasks</Typography>
-              <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {unassignedTasks.map((task) => (
-                  <li key={task.id}>
-                    <b>Task ID:</b> {task.id} &nbsp; <b>Units Unassigned:</b> {task.remaining_units}
-                  </li>
-                ))}
-              </ul>
-            </Box>
-          )}
+          {/* Removed duplicate Unassigned Tasks list. Now only shown in GanttChart. */}
         </>
       )}
       {showTable && (

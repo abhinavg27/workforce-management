@@ -1,0 +1,6 @@
+Flask
+Flask-Cors
+pandas
+numpy
+scikit-learn
+openai # Ensure this matches the version you use

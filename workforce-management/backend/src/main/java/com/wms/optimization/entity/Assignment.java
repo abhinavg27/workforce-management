@@ -16,11 +16,15 @@ public class Assignment {
     private boolean isBreak;
     private String status; // NEW: PENDING, ACCEPTED, REJECTED
     private String feedback; // NEW: feedback or reason for rejection
+    // Shift info for the worker for this assignment
+    private String shiftName;
+    private String shiftStart;
+    private String shiftEnd;
 
 
     public Assignment() {}
 
-    public Assignment(Long id, String workerId, String workerName, String taskId, String taskName, LocalDateTime startTime, LocalDateTime endTime, int unitsAssigned, boolean isBreak, String status, String feedback) {
+    public Assignment(Long id, String workerId, String workerName, String taskId, String taskName, LocalDateTime startTime, LocalDateTime endTime, int unitsAssigned, boolean isBreak, String status, String feedback, String shiftName, String shiftStart, String shiftEnd) {
         this.id = id;
         this.workerId = workerId;
         this.workerName = workerName;
@@ -32,7 +36,16 @@ public class Assignment {
         this.isBreak = isBreak;
         this.status = status;
         this.feedback = feedback;
+        this.shiftName = shiftName;
+        this.shiftStart = shiftStart;
+        this.shiftEnd = shiftEnd;
     }
+    public String getShiftName() { return shiftName; }
+    public void setShiftName(String shiftName) { this.shiftName = shiftName; }
+    public String getShiftStart() { return shiftStart; }
+    public void setShiftStart(String shiftStart) { this.shiftStart = shiftStart; }
+    public String getShiftEnd() { return shiftEnd; }
+    public void setShiftEnd(String shiftEnd) { this.shiftEnd = shiftEnd; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
