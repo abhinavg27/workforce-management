@@ -214,7 +214,7 @@ const TaskManagement: React.FC = () => {
                 <TableCell>Type</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Count</TableCell>
-                <TableCell>Skill</TableCell>
+                <TableCell>Skill Id</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
