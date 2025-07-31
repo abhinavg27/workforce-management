@@ -1,5 +1,5 @@
 -- Inbound Tasks Insert Statements (Batch 1 of 2)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (10000, 100, 'Receive', 'In', 3, NULL, 55),
 (10001, 121, 'D2B', 'In', 3, 10000, 3),
 (10002, 121, 'D2B', 'In', 3, 10000, 7),
@@ -1002,7 +1002,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (10999, 120, 'Stow', 'In', 1, 10987, 1);
 
 -- Inbound Tasks Insert Statements (Batch 2 of 2)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (11000, 100, 'Receive', 'In', 1, NULL, 43),
 (11001, 121, 'D2B', 'In', 1, 11000, 3),
 (11002, 120, 'Stow', 'In', 1, 11000, 3),
@@ -1309,7 +1309,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (11303, 121, 'D2B', 'In', 3, 11295, 6);
 
 -- Outbound Tasks Insert Statements (Batch 1 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (11304, 211, 'Pick_Paper', 'Out', 2, NULL, 3),
 (11305, 230, 'Rebin_Manual', 'Out', 2, 11304, 3),
 (11306, 242, 'Pack_Paper', 'Out', 2, 11305, 3),
@@ -2312,7 +2312,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (12303, 200, 'Pick_Paperless', 'Out', 3, NULL, 3);
 
 -- Outbound Tasks Insert Statements (Batch 2 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (12304, 221, 'DPS', 'Out', 3, 12303, 3),
 (12305, 250, 'Pick_to_Go_Paperless', 'Out', 3, 12304, 3),
 (12306, 200, 'Pick_Paperless', 'Out', 1, NULL, 2),
@@ -3315,7 +3315,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (13303, 230, 'Rebin_Manual', 'Out', 3, 13302, 4);
 
 -- Outbound Tasks Insert Statements (Batch 3 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (13304, 260, 'Gift', 'Out', 3, 13303, 4),
 (13305, 211, 'Pick_Paper', 'Out', 1, NULL, 3),
 (13306, 220, 'Induction', 'Out', 1, 13305, 3),
@@ -4318,7 +4318,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (14303, 242, 'Pack_Paper', 'Out', 2, 14302, 2);
 
 -- Outbound Tasks Insert Statements (Batch 4 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (14304, 200, 'Pick_Paperless', 'Out', 3, NULL, 10),
 (14305, 221, 'DPS', 'Out', 3, 14304, 10),
 (14306, 260, 'Gift', 'Out', 3, 14305, 10),
@@ -5321,7 +5321,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (15303, 211, 'Pick_Paper', 'Out', 1, NULL, 4);
 
 -- Outbound Tasks Insert Statements (Batch 5 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (15304, 231, 'Rebin_DAS', 'Out', 1, 15303, 4),
 (15305, 241, 'Pack_Paperless', 'Out', 1, 15304, 4),
 (15306, 200, 'Pick_Paperless', 'Out', 2, NULL, 3),
@@ -6324,7 +6324,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (16303, 230, 'Rebin_Manual', 'Out', 2, 16302, 3);
 
 -- Outbound Tasks Insert Statements (Batch 6 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (16304, 243, 'Pack_Return', 'Out', 2, 16303, 3),
 (16305, 200, 'Pick_Paperless', 'Out', 2, NULL, 3),
 (16306, 221, 'DPS', 'Out', 2, 16305, 3),
@@ -7327,7 +7327,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (17303, 242, 'Pack_Paper', 'Out', 2, 17302, 2);
 
 -- Outbound Tasks Insert Statements (Batch 7 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (17304, 211, 'Pick_Paper', 'Out', 2, NULL, 3),
 (17305, 230, 'Rebin_Manual', 'Out', 2, 17304, 3),
 (17306, 242, 'Pack_Paper', 'Out', 2, 17305, 3),
@@ -8330,7 +8330,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (18303, 200, 'Pick_Paperless', 'Out', 1, NULL, 2);
 
 -- Outbound Tasks Insert Statements (Batch 8 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (18304, 231, 'Rebin_DAS', 'Out', 1, 18303, 2),
 (18305, 240, 'Pack', 'Out', 1, 18304, 2),
 (18306, 211, 'Pick_Paper', 'Out', 3, NULL, 3),
@@ -9333,7 +9333,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (19303, 221, 'DPS', 'Out', 1, 19302, 2);
 
 -- Outbound Tasks Insert Statements (Batch 9 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (19304, 251, 'Pick_to_Go_Paper', 'Out', 1, 19303, 2),
 (19305, 200, 'Pick_Paperless', 'Out', 1, NULL, 2),
 (19306, 230, 'Rebin_Manual', 'Out', 1, 19305, 2),
@@ -10336,7 +10336,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (20303, 240, 'Pack', 'Out', 2, 20302, 3);
 
 -- Outbound Tasks Insert Statements (Batch 10 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (20304, 200, 'Pick_Paperless', 'Out', 1, NULL, 1),
 (20305, 220, 'Induction', 'Out', 1, 20304, 1),
 (20306, 251, 'Pick_to_Go_Paper', 'Out', 1, 20305, 1),
@@ -11339,7 +11339,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (21303, 211, 'Pick_Paper', 'Out', 1, NULL, 3);
 
 -- Outbound Tasks Insert Statements (Batch 11 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (21304, 230, 'Rebin_Manual', 'Out', 1, 21303, 3),
 (21305, 250, 'Pick_to_Go_Paperless', 'Out', 1, 21304, 3),
 (21306, 200, 'Pick_Paperless', 'Out', 2, NULL, 2),
@@ -12342,7 +12342,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (22303, 230, 'Rebin_Manual', 'Out', 1, 22302, 2);
 
 -- Outbound Tasks Insert Statements (Batch 12 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (22304, 240, 'Pack', 'Out', 1, 22303, 2),
 (22305, 211, 'Pick_Paper', 'Out', 3, NULL, 2),
 (22306, 230, 'Rebin_Manual', 'Out', 3, 22305, 2),
@@ -13345,7 +13345,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (23303, 242, 'Pack_Paper', 'Out', 3, 23302, 2);
 
 -- Outbound Tasks Insert Statements (Batch 13 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (23304, 211, 'Pick_Paper', 'Out', 2, NULL, 2),
 (23305, 221, 'DPS', 'Out', 2, 23304, 2),
 (23306, 243, 'Pack_Return', 'Out', 2, 23305, 2),
@@ -14348,7 +14348,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (24303, 200, 'Pick_Paperless', 'Out', 3, NULL, 3);
 
 -- Outbound Tasks Insert Statements (Batch 14 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (24304, 221, 'DPS', 'Out', 3, 24303, 3),
 (24305, 242, 'Pack_Paper', 'Out', 3, 24304, 3),
 (24306, 200, 'Pick_Paperless', 'Out', 1, NULL, 2),
@@ -15351,7 +15351,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (25303, 230, 'Rebin_Manual', 'Out', 1, 25302, 4);
 
 -- Outbound Tasks Insert Statements (Batch 15 of 15)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (25304, 250, 'Pick_to_Go_Paperless', 'Out', 1, 25303, 4),
 (25305, 200, 'Pick_Paperless', 'Out', 2, NULL, 1),
 (25306, 230, 'Rebin_Manual', 'Out', 2, 25305, 1),
@@ -15754,7 +15754,7 @@ INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, depen
 (25703, 260, 'Gift', 'Out', 2, 25702, 4);
 
 -- Other Tasks Insert Statements (Batch 1 of 2)
-INSERT INTO logistics_tasks (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
+INSERT INTO task (id, skill_id, task_name, task_type, priority, dependent_task_id, task_count) VALUES
 (25704, 300, 'ShipSort', 'Sort', 2, NULL, 30),
 (25705, 300, 'ShipSort', 'Sort', 3, NULL, 25),
 (25706, 300, 'ShipSort', 'Sort', 2, NULL, 13),
