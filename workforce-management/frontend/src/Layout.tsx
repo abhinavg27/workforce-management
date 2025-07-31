@@ -19,7 +19,7 @@ const Layout: React.FC = () => {
       <AppBar position="fixed" sx={{ zIndex: 1201 }}>
         <Toolbar>
           <Typography variant="h6" noWrap component="div">
-            Workforce Management
+            AI Powered Logistics Workforce Management
           </Typography>
         </Toolbar>
       </AppBar>
