@@ -135,12 +135,17 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
     // Sort by start time
     const sorted = [...assignments].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     const lanes: TaskAssignmentDTO[][] = [];
+    
     sorted.forEach(task => {
       let placed = false;
       for (const lane of lanes) {
-        // If no overlap or exactly continuous with last in lane
+        // Check if task can be placed in this lane without overlap
         const last = lane[lane.length - 1];
-        if (new Date(task.startTime).getTime() >= new Date(last.endTime).getTime()) {
+        const taskStartTime = new Date(task.startTime).getTime();
+        const lastEndTime = new Date(last.endTime).getTime();
+        
+        // Only place in same lane if task starts after the last task ends (no overlap)
+        if (taskStartTime >= lastEndTime) {
           lane.push(task);
           placed = true;
           break;
@@ -150,6 +155,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
         lanes.push([task]);
       }
     });
+    
     return lanes;
   }
 
@@ -332,6 +338,20 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                     <Box key={laneIdx} sx={{ position: 'relative', height: 36, mb: 0.5, overflow: 'visible', display: 'flex', alignItems: 'center' }}>
                       {lane.map((a, idx) => {
                         const { left, width } = getPercent(a.startTime, a.endTime);
+                        
+                        // For continuous tasks, check if next task starts exactly when this one ends
+                        let adjustedWidth = width;
+                        if (idx < lane.length - 1) {
+                          const nextTask = lane[idx + 1];
+                          const currentEndTime = new Date(a.endTime).getTime();
+                          const nextStartTime = new Date(nextTask.startTime).getTime();
+                          
+                          // If tasks are continuous (no gap), add a small visual separation
+                          if (currentEndTime === nextStartTime) {
+                            adjustedWidth = `calc(${width} - 2px)`;
+                          }
+                        }
+                        
                         return (
                           <Tooltip
                             key={idx}
@@ -347,7 +367,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                               sx={{
                                 position: 'absolute',
                                 left,
-                                width,
+                                width: adjustedWidth,
                                 height: 28,
                                 top: 4,
                                 bgcolor: getTaskColor(a),
@@ -362,6 +382,11 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                                 display: 'flex',
                                 alignItems: 'center',
                                 maxWidth: '100%',
+                                border: '1px solid rgba(255, 255, 255, 0.5)',
+                                boxSizing: 'border-box',
+                                marginRight: idx < lane.length - 1 && 
+                                  new Date(a.endTime).getTime() === new Date(lane[idx + 1].startTime).getTime() 
+                                  ? '1px' : '0px',
                               }}
                               elevation={2}
                               onClick={() => { setSelectedTask({task: a, workerId: worker.workerId}); setDialogOpen(true); }}
