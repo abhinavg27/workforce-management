@@ -33,6 +33,7 @@ class Worker(BaseModel):
     name: str
     skills: List[int]
     productivity: dict  # skill_id -> units/hour
+    skill_levels: Optional[dict] = {}  # skill_id -> level (1-4)
     shift_start: str  # '08:00'
     shift_end: str    # '16:00'
     break_minutes: int = 60
@@ -62,15 +63,58 @@ class OptimizeResponse(BaseModel):
 
 from ortools.sat.python.cp_model import INT32_MAX
 
+# --- Helper Functions ---
+def get_skill_quality_score(worker: Worker, skill_id: int) -> float:
+    """Calculate quality score based on skill level and productivity."""
+    skill_level = worker.skill_levels.get(str(skill_id)) or worker.skill_levels.get(skill_id) or 1
+    productivity = (
+        worker.productivity.get(str(skill_id))
+        or worker.productivity.get(skill_id)
+        or worker.productivity.get(int(skill_id))
+        or 1
+    )
+    
+    # Quality score combines skill level (1-4) and productivity (0-100)
+    # Higher skill level = better quality, higher productivity = faster completion
+    skill_weight = skill_level / 4.0  # Normalize to 0-1
+    productivity_weight = productivity / 100.0  # Normalize to 0-1
+    
+    # Weighted combination: 60% skill level, 40% productivity
+    return (0.6 * skill_weight) + (0.4 * productivity_weight)
+
+def get_minimum_skill_level_required(task_priority: int) -> int:
+    """Determine minimum skill level required based on task priority."""
+    # Relaxed skill requirements to improve assignment rate
+    if task_priority >= 9:  # Only the most critical tasks require high skill
+        return 3
+    elif task_priority >= 7:  # Important tasks require medium skill
+        return 2
+    else:  # Regular tasks can be done by anyone with the skill
+        return 1
+
 # --- Optimizer Logic (CP-SAT) ---
 @app.post("/optimize", response_model=OptimizeResponse)
 async def optimize(req: OptimizeRequest, request: Request):
-    # --- DEBUG: Print why tasks are unassigned ---
+    # --- DEBUG: Enhanced analysis of why tasks might be unassigned ---
+    logger.info("=== TASK ASSIGNMENT ANALYSIS ===")
     for t in req.tasks:
         possible_workers = [w for w in req.workers if t.skill_id in w.skills]
+        min_skill_level = get_minimum_skill_level_required(t.priority)
+        
         if not possible_workers:
-            # logger.warning(f"Task {t.id} ('{t.name}') cannot be assigned: no worker has required skill_id {t.skill_id}.")
+            logger.warning(f"❌ Task {t.id} ('{t.name}') - NO WORKERS with skill {t.skill_id}")
             continue
+            
+        qualified_workers = []
+        for w in possible_workers:
+            worker_skill_level = w.skill_levels.get(str(t.skill_id)) or w.skill_levels.get(t.skill_id) or 1
+            if worker_skill_level >= min_skill_level:
+                qualified_workers.append(w)
+        
+        if not qualified_workers:
+            logger.warning(f"⚠️  Task {t.id} ('{t.name}') priority {t.priority} - {len(possible_workers)} workers have skill {t.skill_id} but none meet min level {min_skill_level}")
+        else:
+            logger.info(f"✅ Task {t.id} ('{t.name}') - {len(qualified_workers)}/{len(possible_workers)} qualified workers")
         for w in possible_workers:
             # Try to get productivity for this skill
             prod = (
@@ -143,12 +187,28 @@ async def optimize(req: OptimizeRequest, request: Request):
     end_vars = {}
     unit_vars = {}
     split_unit_vars = {}
+    quality_scores = {}  # Store quality scores for objective function
     import math
+    
     for t in req.tasks:
+        min_skill_level = get_minimum_skill_level_required(t.priority)
+        
         for w in req.workers:
             if t.skill_id not in w.skills:
                 # logger.info(f"Worker {w.id} ('{w.name}') does not have skill {t.skill_id} for task {t.id} ('{t.name}')")
                 continue
+                
+            # Check if worker meets minimum skill level requirement
+            worker_skill_level = w.skill_levels.get(str(t.skill_id)) or w.skill_levels.get(t.skill_id) or 1
+            if worker_skill_level < min_skill_level:
+                # For critical business tasks, allow assignment with reduced efficiency rather than leaving unassigned
+                if t.priority >= 8 and min_skill_level > 1:
+                    logger.info(f"⚠️ Allowing reduced-skill assignment: Worker {w.id} (level {worker_skill_level}) for task {t.id} (needs {min_skill_level})")
+                    # Continue with reduced productivity penalty
+                else:
+                    logger.info(f"Worker {w.id} ('{w.name}') skill level {worker_skill_level} below minimum {min_skill_level} for task {t.id} ('{t.name}')")
+                    continue
+                
             prod = None
             for key in [str(t.skill_id), t.skill_id, int(t.skill_id)]:
                 if key in w.productivity:
@@ -157,6 +217,18 @@ async def optimize(req: OptimizeRequest, request: Request):
             if prod is None:
                 prod = 1
                 logger.warning(f"Productivity for worker {w.id} ('{w.name}') and skill {t.skill_id} not found, defaulting to 1.")
+                
+            # Calculate quality score for this worker-task combination
+            quality_score = get_skill_quality_score(w, t.skill_id)
+            
+            # Apply penalty for under-skilled workers on critical tasks
+            if worker_skill_level < min_skill_level and t.priority >= 8:
+                skill_gap_penalty = (min_skill_level - worker_skill_level) * 0.2
+                quality_score = max(0.1, quality_score - skill_gap_penalty)  # Minimum quality score
+                logger.info(f"Skill gap penalty for worker {w.id} on task {t.id}: -{skill_gap_penalty:.3f}")
+            
+            quality_scores[(t.id, w.id)] = quality_score
+            
             shift_start_min, shift_end_min = shift_bounds[w.id]
             max_units = math.floor(prod * ((shift_end_min - shift_start_min - w.break_minutes) / 60.0))
             if max_units <= 0:
@@ -181,7 +253,7 @@ async def optimize(req: OptimizeRequest, request: Request):
             # Enforce: if presence==1 then split_units>0, if presence==0 then split_units==0
             model.Add(split_units > 0).OnlyEnforceIf(presence)
             model.Add(split_units == 0).OnlyEnforceIf(presence.Not())
-            #logger.info(f"Productivity for task {t.id} ('{t.name}') with worker {w.id} ('{w.name}'): {prod} units/hour, start={start}, end={end}, split_units={split_units}, duration={duration}, presence={presence}, interval={interval}")
+            #logger.info(f"Quality score for task {t.id} ('{t.name}') with worker {w.id} ('{w.name}'): {quality_score:.3f}, skill_level={worker_skill_level}, prod={prod}")
 
     # Diagnostics: If no intervals created, log reason
     if not intervals:
@@ -195,11 +267,18 @@ async def optimize(req: OptimizeRequest, request: Request):
         return response
 
     # Each task: sum of split units assigned to all workers <= total units
+    # Track tasks that have no possible assignments for analysis
+    tasks_with_no_workers = []
     for t in req.tasks:
         possible_workers = [w.id for w in req.workers if (t.id, w.id) in intervals]
         if not possible_workers:
+            tasks_with_no_workers.append(t)
+            logger.warning(f"🚫 Task {t.id} ('{t.name}') has NO possible worker assignments")
             continue
         model.Add(sum([split_unit_vars[(t.id, wid)] for wid in possible_workers]) <= t.units)
+    
+    if tasks_with_no_workers:
+        logger.warning(f"📊 {len(tasks_with_no_workers)} tasks have no possible assignments out of {len(req.tasks)} total tasks")
 
     # No overlap for each worker
     for w in req.workers:
@@ -233,12 +312,50 @@ async def optimize(req: OptimizeRequest, request: Request):
                 model.Add(s >= break_end).OnlyEnforceIf(after_break)
                 model.AddBoolOr([before_break, after_break]).OnlyEnforceIf(presences[(t.id, w.id)])
 
-    # Objective: maximize sum of priorities * units assigned
-    model.Maximize(sum([task_map[t].priority * split_unit_vars[(t, w)] for (t, w) in split_unit_vars]))
+    # Enhanced Objective: maximize weighted combination of priority, quality, and load balancing
+    objective_terms = []
+    
+    # Term 1: Priority-weighted units (primary objective)
+    for (t_id, w_id) in split_unit_vars:
+        if t_id in task_map:
+            priority_weight = task_map[t_id].priority * 1000  # Scale up for integer optimization
+            objective_terms.append(priority_weight * split_unit_vars[(t_id, w_id)])
+    
+    # Term 2: Quality-weighted assignments (secondary objective)
+    for (t_id, w_id) in split_unit_vars:
+        if (t_id, w_id) in quality_scores:
+            quality_weight = int(quality_scores[(t_id, w_id)] * 500)  # Scale for integer optimization
+            objective_terms.append(quality_weight * split_unit_vars[(t_id, w_id)])
+    
+    # Term 3: Load balancing penalty (tertiary objective)
+    # Create variables to track worker utilization
+    worker_load_vars = {}
+    for w in req.workers:
+        worker_tasks = [split_unit_vars[(t.id, w.id)] for t in req.tasks if (t.id, w.id) in split_unit_vars]
+        if worker_tasks:
+            worker_load = model.NewIntVar(0, 10000, f"load_w{w.id}")
+            model.Add(worker_load == sum(worker_tasks))
+            worker_load_vars[w.id] = worker_load
+            # Simple linear penalty for high loads (CP-SAT doesn't support quadratic directly)
+            # Penalize loads above a threshold to encourage distribution
+            high_load_penalty = model.NewIntVar(0, 10000, f"penalty_w{w.id}")
+            model.AddMaxEquality(high_load_penalty, [0, worker_load - 500])  # Penalty starts after 500 units
+            objective_terms.append(-2 * high_load_penalty)  # Linear penalty for high loads
+    
+    model.Maximize(sum(objective_terms))
 
     # Solve
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 30.0  # Limit solve time
     status = solver.Solve(model)
+    
+    # Log optimization results
+    if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+        logger.info(f"Optimization completed with status: {'OPTIMAL' if status == cp_model.OPTIMAL else 'FEASIBLE'}")
+        logger.info(f"Objective value: {solver.ObjectiveValue()}")
+        logger.info(f"Solve time: {solver.WallTime():.2f} seconds")
+    else:
+        logger.warning(f"Optimization failed with status: {status}")
     # Build assignments and unassigned tasks
     assigned_units = {t.id: 0 for t in req.tasks}
     if status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
@@ -267,6 +384,41 @@ async def optimize(req: OptimizeRequest, request: Request):
                     task_type=task_type
                 ))
                 assigned_units[t_id] += units_assigned
+        
+        # Log assignment quality metrics
+        total_quality_score = 0
+        assignment_count = 0
+        for (t_id, w_id), interval in intervals.items():
+            if solver.Value(presences[(t_id, w_id)]) and solver.Value(split_unit_vars[(t_id, w_id)]) > 0:
+                if (t_id, w_id) in quality_scores:
+                    total_quality_score += quality_scores[(t_id, w_id)]
+                    assignment_count += 1
+        
+        if assignment_count > 0:
+            avg_quality = total_quality_score / assignment_count
+            logger.info(f"Average assignment quality score: {avg_quality:.3f} ({assignment_count} assignments)")
+        
+        # Log worker utilization  
+        worker_utilizations = {}
+        for w in req.workers:
+            total_units = sum([solver.Value(split_unit_vars[(t.id, w.id)]) 
+                             for t in req.tasks if (t.id, w.id) in split_unit_vars])
+            if total_units > 0:
+                worker_utilizations[w.id] = total_units
+        
+        if worker_utilizations:
+            logger.info(f"Worker utilization: {worker_utilizations}")
+        
+        # Log assignment success rate
+        total_task_units = sum(t.units for t in req.tasks)
+        assigned_task_units = sum(assigned_units.values())
+        assignment_rate = (assigned_task_units / total_task_units) * 100 if total_task_units > 0 else 0
+        logger.info(f"📈 Assignment rate: {assignment_rate:.1f}% ({assigned_task_units}/{total_task_units} units)")
+        
+        tasks_fully_assigned = sum(1 for t in req.tasks if assigned_units[t.id] == t.units)
+        tasks_partially_assigned = sum(1 for t in req.tasks if 0 < assigned_units[t.id] < t.units)
+        tasks_unassigned = sum(1 for t in req.tasks if assigned_units[t.id] == 0)
+        logger.info(f"📋 Task status: {tasks_fully_assigned} fully assigned, {tasks_partially_assigned} partial, {tasks_unassigned} unassigned")
         # Add break assignments for each worker
         for w in req.workers:
             break_start = shift_bounds[w.id][0] + 240

@@ -27,6 +27,13 @@ export interface WorkerAssignmentScheduleDTO {
     endTime: string;
     dayOfWeek: string;
   }>;
+  skills?: Array<{
+    skillId: number;
+    skillName: string;
+    skillLevel: number;
+    productivity: number;
+    processSkillSubCategoryCd: number;
+  }>;
 }
 
 
@@ -80,6 +87,53 @@ function getTaskType(task: TaskAssignmentDTO): string {
   if (name.includes('special') || name.includes('3001') || name.includes('3002')) return 'SPECIAL';
   if (/maintenance|qa|forklift|management/.test(name)) return 'OTHER';
   return 'DEFAULT';
+}
+
+// Helper to infer required skill ID from task name
+function getRequiredSkillId(task: TaskAssignmentDTO): number | null {
+  if (task.isBreak) return null;
+  const name = task.taskName.toLowerCase();
+  
+  // Map task names to skill IDs based on database mapping
+  if (name.includes('receive')) return 100;
+  if (name.includes('stow')) return 120;
+  if (name.includes('d2b')) return 121;
+  if (name.includes('pick_paperless') || name.includes('pick paperless')) return 200;
+  if (name.includes('pick_paper') || name.includes('pick paper')) return 211;
+  if (name.includes('induction')) return 220;
+  if (name.includes('dps')) return 221;
+  if (name.includes('rebin_manual') || name.includes('rebin manual')) return 230;
+  if (name.includes('rebin_das') || name.includes('rebin das')) return 231;
+  if (name.includes('pack') && !name.includes('return') && !name.includes('paperless')) return 240;
+  if (name.includes('pack_paperless') || name.includes('pack paperless')) return 241;
+  if (name.includes('pack_paper') || name.includes('pack paper')) return 242;
+  if (name.includes('pack_return') || name.includes('pack return')) return 243;
+  if (name.includes('pick to go paperless')) return 250;
+  if (name.includes('pick to go paper')) return 251;
+  if (name.includes('gift')) return 260;
+  if (name.includes('shipsort') || name.includes('ship sort')) return 300;
+  if (name.includes('forklift')) return 400;
+  if (name.includes('maintenance')) return 500;
+  if (name.includes('qa')) return 600;
+  if (name.includes('management')) return 700;
+  
+  return null;
+}
+
+// Helper to check if worker has optimal skill for task
+function getSkillMatch(worker: WorkerAssignmentScheduleDTO, task: TaskAssignmentDTO): 'optimal' | 'adequate' | 'suboptimal' | 'none' {
+  if (task.isBreak || !worker.skills) return 'none';
+  
+  const requiredSkillId = getRequiredSkillId(task);
+  if (!requiredSkillId) return 'none';
+  
+  const workerSkill = worker.skills.find(s => s.skillId === requiredSkillId);
+  if (!workerSkill) return 'none';
+  
+  // Skill level 4 = optimal, 3 = adequate, 1-2 = suboptimal
+  if (workerSkill.skillLevel >= 4) return 'optimal';
+  if (workerSkill.skillLevel >= 3) return 'adequate';
+  return 'suboptimal';
 }
 
 function getTaskColor(task: TaskAssignmentDTO) {
@@ -304,6 +358,59 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                       Shift: {shiftLabelFinal}
                     </Typography>
                   )}
+                  {/* Worker Skills Display */}
+                  {worker.skills && worker.skills.length > 0 && (
+                    <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.25, maxWidth: 170 }}>
+                      {worker.skills.slice(0, 3).map((skill) => {
+                        // Color-code by skill level: 1=gray, 2=blue, 3=green, 4=gold
+                        const getSkillColor = (level: number) => {
+                          switch (level) {
+                            case 1: return { bgcolor: '#e0e0e0', color: '#424242' };
+                            case 2: return { bgcolor: '#e3f2fd', color: '#1976d2', border: '1px solid #90caf9' };
+                            case 3: return { bgcolor: '#e8f5e9', color: '#2e7d32', border: '1px solid #81c784' };
+                            case 4: return { bgcolor: '#fff3e0', color: '#e65100', border: '1px solid #ffb74d' };
+                            default: return { bgcolor: '#f5f5f5', color: '#666' };
+                          }
+                        };
+                        
+                        const skillColor = getSkillColor(skill.skillLevel);
+                        
+                        return (
+                          <Box
+                            key={skill.skillId}
+                            sx={{
+                              ...skillColor,
+                              fontSize: '0.6rem',
+                              px: 0.4,
+                              py: 0.1,
+                              borderRadius: 0.5,
+                              fontWeight: skill.skillLevel >= 3 ? 600 : 400,
+                              cursor: 'help',
+                            }}
+                            title={`${skill.skillName} (Level ${skill.skillLevel}, ${skill.productivity}% productivity)`}
+                          >
+                            {skill.skillName} L{skill.skillLevel}
+                          </Box>
+                        );
+                      })}
+                      {worker.skills.length > 3 && (
+                        <Box
+                          sx={{
+                            bgcolor: '#f5f5f5',
+                            color: '#666',
+                            fontSize: '0.6rem',
+                            px: 0.4,
+                            py: 0.1,
+                            borderRadius: 0.5,
+                            cursor: 'help',
+                          }}
+                          title={`+${worker.skills.length - 3} more skills: ${worker.skills.slice(3).map(s => s.skillName).join(', ')}`}
+                        >
+                          +{worker.skills.length - 3}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                 </Box>
                 {/* Gantt chart bars, full width */}
                 <Box sx={{ position: 'relative', flex: 1, minHeight: 36, background: '#f5f5f5', borderRadius: 2, minWidth: 300, py: 0.5 }} role="list" aria-label={`Assignments for ${worker.workerName}`}>
@@ -352,13 +459,27 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                           }
                         }
                         
+                        // Get skill match indicator
+                        const skillMatch = getSkillMatch(worker, a);
+                        const getSkillIndicator = (match: string) => {
+                          switch (match) {
+                            case 'optimal': return { color: '#4caf50', symbol: '●', tooltip: 'Optimal skill match (Level 4)' };
+                            case 'adequate': return { color: '#2196f3', symbol: '●', tooltip: 'Adequate skill match (Level 3)' };
+                            case 'suboptimal': return { color: '#ff9800', symbol: '◐', tooltip: 'Suboptimal skill match (Level 1-2)' };
+                            case 'none': return { color: '#f44336', symbol: '○', tooltip: 'No skill match or skill missing' };
+                            default: return null;
+                          }
+                        };
+                        
+                        const skillIndicator = getSkillIndicator(skillMatch);
+                        
                         return (
                           <Tooltip
                             key={idx}
                             title={
                               a.isBreak
                                 ? `Break\n${a.startTime} - ${a.endTime}`
-                                : `${a.taskName}\nUnits: ${a.unitsAssigned}\n${a.startTime} - ${a.endTime}`
+                                : `${a.taskName}\nUnits: ${a.unitsAssigned}\n${a.startTime} - ${a.endTime}${skillIndicator ? `\n${skillIndicator.tooltip}` : ''}`
                             }
                             arrow
                             placement="top"
@@ -381,6 +502,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                                 zIndex: 2,
                                 display: 'flex',
                                 alignItems: 'center',
+                                justifyContent: 'space-between',
                                 maxWidth: '100%',
                                 border: '1px solid rgba(255, 255, 255, 0.5)',
                                 boxSizing: 'border-box',
@@ -398,7 +520,24 @@ const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = []
                               aria-label={a.isBreak ? `Break from ${a.startTime} to ${a.endTime}` : `${a.taskName}, units: ${a.unitsAssigned}, from ${a.startTime} to ${a.endTime}`}
                               title={a.isBreak ? 'Break' : `${a.taskName} (${a.unitsAssigned})`}
                             >
-                              {a.isBreak ? 'Break' : `${a.taskName} (${a.unitsAssigned})`}
+                              <Typography variant="caption" sx={{ flexGrow: 1, textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                {a.isBreak ? 'Break' : `${a.taskName} (${a.unitsAssigned})`}
+                              </Typography>
+                              {skillIndicator && !a.isBreak && (
+                                <Typography 
+                                  variant="caption" 
+                                  sx={{ 
+                                    color: skillIndicator.color, 
+                                    fontWeight: 'bold', 
+                                    fontSize: '0.9rem',
+                                    ml: 0.5,
+                                    minWidth: 'auto'
+                                  }}
+                                  title={skillIndicator.tooltip}
+                                >
+                                  {skillIndicator.symbol}
+                                </Typography>
+                              )}
                             </Paper>
                           </Tooltip>
                         );
