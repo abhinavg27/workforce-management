@@ -1,7 +1,7 @@
 function isBreakTask(task: TaskAssignmentDTO): boolean {
   if (!task) return false;
   if (task.isBreak === true) return true;
-  if (typeof task.isBreak === 'string' && task.isBreak.toLowerCase() === 'true') return true;
+  if (typeof task.isBreak === 'string' && task.isBreak === 'true') return true;
   if (typeof task.isBreak === 'number' && task.isBreak === 1) return true;
   if (typeof task.isBreak === 'string' && task.isBreak === '1') return true;
   if (typeof task.taskName === 'string' && task.taskName.trim().toLowerCase() === 'break') return true;

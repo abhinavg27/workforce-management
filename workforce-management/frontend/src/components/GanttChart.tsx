@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useAppSelector } from '../hooks';
 import { Box, Typography, Paper } from '@mui/material';
 import TaskDetailsDialog from './TaskDetailsDialog';
 
@@ -89,6 +88,7 @@ function getTaskColor(task: TaskAssignmentDTO) {
 
 // Gantt chart with worker name and chart side by side, one row per worker, proportional bar width, tooltip on hover
 // Helper to get task dependency map from Redux store
+/*
 function useTaskDependencyMap() {
   const tasks = useAppSelector(state => state.tasks.tasks);
   // Map: taskId (string) -> dependentTaskId (string)
@@ -97,14 +97,14 @@ function useTaskDependencyMap() {
     if (t.dependentTaskId) depMap[String(t.id)] = String(t.dependentTaskId);
   }
   return depMap;
-}
+}*/
 
 const GanttChart: React.FC<GanttChartProps> = ({ schedules, unassignedTasks = [], onRemoveAssignment }) => {
   // State for task details dialog
   const [selectedTask, setSelectedTask] = useState<{task: TaskAssignmentDTO, workerId: string} | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   // Dependency map
-  const depMap = useTaskDependencyMap();
+  // const depMap = useTaskDependencyMap();
 
   // Defensive: schedules may be undefined/null
   const safeSchedules = Array.isArray(schedules) ? schedules : [];
