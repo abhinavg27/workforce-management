@@ -174,12 +174,21 @@ async def optimize(req: OptimizeRequest, request: Request):
         else:
             raise ValueError(f"Invalid time format: {tstr}")
         minutes = h * 60 + m
-        if h == 0 and m == 0 and (tstr == "00:00" or tstr == "00:00:00"):
-            minutes = 24 * 60
         return minutes
     shift_bounds = {}
     for w in req.workers:
-        shift_bounds[w.id] = (time_to_min(w.shift_start), time_to_min(w.shift_end))
+        start_min = time_to_min(w.shift_start)
+        end_min = time_to_min(w.shift_end)
+        
+        # Handle overnight shifts properly
+        # If end time is less than or equal to start time, it means shift crosses midnight
+        if end_min <= start_min:
+            # For overnight shifts, we need to add 24 hours to the end time
+            end_min += 24 * 60  # Add 24 hours
+            logger.info(f"Detected overnight shift for worker {w.id} ('{w.name}'): {w.shift_start}-{w.shift_end}")
+        
+        shift_bounds[w.id] = (start_min, end_min)
+        logger.info(f"Worker {w.id} ('{w.name}') shift bounds: {start_min}-{end_min} minutes ({w.shift_start}-{w.shift_end})")
 
     intervals = {}
     presences = {}
@@ -193,10 +202,23 @@ async def optimize(req: OptimizeRequest, request: Request):
     for t in req.tasks:
         min_skill_level = get_minimum_skill_level_required(t.priority)
         
+        # Special logging for Pick_Paperless tasks
+        if t.skill_id == 200:
+            logger.info(f"🔍 Analyzing Pick_Paperless task {t.id} ('{t.name}') - {t.units} units, priority {t.priority}")
+        
         for w in req.workers:
             if t.skill_id not in w.skills:
                 # logger.info(f"Worker {w.id} ('{w.name}') does not have skill {t.skill_id} for task {t.id} ('{t.name}')")
                 continue
+            
+            # Special logging for Charlie Lee
+            if w.id == "I7J8K9L" and t.skill_id == 200:
+                logger.info(f"🔍 Charlie Lee analysis for Pick_Paperless task {t.id}:")
+                logger.info(f"   - Has skill 200: {200 in w.skills}")
+                logger.info(f"   - Skill level: {w.skill_levels.get(200, 'not found')}")
+                logger.info(f"   - Productivity: {w.productivity.get(200, 'not found')}")
+                logger.info(f"   - Min required level: {min_skill_level}")
+                logger.info(f"   - Shift: {w.shift_start}-{w.shift_end}")
                 
             # Check if worker meets minimum skill level requirement
             worker_skill_level = w.skill_levels.get(str(t.skill_id)) or w.skill_levels.get(t.skill_id) or 1
@@ -231,8 +253,17 @@ async def optimize(req: OptimizeRequest, request: Request):
             
             shift_start_min, shift_end_min = shift_bounds[w.id]
             max_units = math.floor(prod * ((shift_end_min - shift_start_min - w.break_minutes) / 60.0))
+            
+            # Special logging for Charlie Lee
+            if w.id == "I7J8K9L" and t.skill_id == 200:
+                logger.info(f"   - Shift duration: {shift_end_min - shift_start_min} minutes")
+                logger.info(f"   - Break time: {w.break_minutes} minutes")
+                logger.info(f"   - Available work time: {shift_end_min - shift_start_min - w.break_minutes} minutes")
+                logger.info(f"   - Max units possible: {max_units}")
+            
             if max_units <= 0:
-                # logger.warning(f"Worker {w.id} ('{w.name}') cannot work any units for skill {t.skill_id} in shift.")
+                if w.id == "I7J8K9L" and t.skill_id == 200:
+                    logger.warning(f"❌ Charlie Lee cannot work any units for Pick_Paperless - max_units={max_units}")
                 continue
             # Allow splitting: units assigned to this worker for this task
             split_units = model.NewIntVar(0, min(t.units, max_units), f"units_t{t.id}_w{w.id}")
@@ -253,6 +284,11 @@ async def optimize(req: OptimizeRequest, request: Request):
             # Enforce: if presence==1 then split_units>0, if presence==0 then split_units==0
             model.Add(split_units > 0).OnlyEnforceIf(presence)
             model.Add(split_units == 0).OnlyEnforceIf(presence.Not())
+            
+            # Special logging for Charlie Lee
+            if w.id == "I7J8K9L" and t.skill_id == 200:
+                logger.info(f"✅ Created interval for Charlie Lee & Pick_Paperless task {t.id}")
+            
             #logger.info(f"Quality score for task {t.id} ('{t.name}') with worker {w.id} ('{w.name}'): {quality_score:.3f}, skill_level={worker_skill_level}, prod={prod}")
 
     # Diagnostics: If no intervals created, log reason
@@ -365,8 +401,39 @@ async def optimize(req: OptimizeRequest, request: Request):
                 end_min = solver.Value(end_vars[(t_id, w_id)])
                 units_assigned = solver.Value(split_unit_vars[(t_id, w_id)])
                 date = req.date
-                start_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=start_min)
-                end_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=end_min)
+                
+                # Handle cross-midnight assignments properly
+                base_dt = datetime.datetime.fromisoformat(f"{date}T00:00")
+                
+                # For night shift workers, if their shift bounds indicate overnight work,
+                # we need to determine if the assignment time is for the current day or next day
+                worker_shift_start, worker_shift_end = shift_bounds[w_id]
+                
+                # For our 08:00-08:00+1 Gantt Chart timeline, night shift work (00:00-08:00) 
+                # should appear as NEXT DAY times to be visible in the chart
+                if worker_shift_start == 0 and worker_shift_end <= 8 * 60:  # Night shift 00:00-08:00
+                    # Night shift assignments should be next day to appear in our timeline
+                    start_dt = base_dt + datetime.timedelta(days=1, minutes=start_min)
+                    end_dt = base_dt + datetime.timedelta(days=1, minutes=end_min)
+                elif worker_shift_end > 24 * 60:  # Other overnight shifts (like evening 16:00-00:00+1)
+                    # For evening shifts crossing midnight
+                    if start_min >= 16 * 60:  # After 16:00, same day
+                        start_dt = base_dt + datetime.timedelta(minutes=start_min)
+                        end_dt = base_dt + datetime.timedelta(minutes=end_min)
+                    else:  # Before 16:00, must be next day portion
+                        start_dt = base_dt + datetime.timedelta(days=1, minutes=start_min)
+                        end_dt = base_dt + datetime.timedelta(days=1, minutes=end_min)
+                else:
+                    # Regular shift, no cross-midnight
+                    start_dt = base_dt + datetime.timedelta(minutes=start_min)
+                    end_dt = base_dt + datetime.timedelta(minutes=end_min)
+                
+                # Special logging for Charlie Lee assignments
+                if w_id == "I7J8K9L":
+                    logger.info(f"🔍 Charlie Lee assignment: task {t_id}, start_min={start_min}, end_min={end_min}")
+                    logger.info(f"   Worker shift bounds: {worker_shift_start}-{worker_shift_end} minutes")
+                    logger.info(f"   Is overnight shift: {worker_shift_end > 24 * 60}")
+                    logger.info(f"   Generated timestamps: {start_dt.isoformat()} to {end_dt.isoformat()}")
                 # Get task type and name for legend
                 task_type = None
                 task_name = None
@@ -421,11 +488,36 @@ async def optimize(req: OptimizeRequest, request: Request):
         logger.info(f"📋 Task status: {tasks_fully_assigned} fully assigned, {tasks_partially_assigned} partial, {tasks_unassigned} unassigned")
         # Add break assignments for each worker
         for w in req.workers:
-            break_start = shift_bounds[w.id][0] + 240
+            break_start = shift_bounds[w.id][0] + 240  # 4 hours after shift start
             break_end = break_start + w.break_minutes
             date = req.date
-            start_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=break_start)
-            end_dt = datetime.datetime.fromisoformat(f"{date}T00:00") + datetime.timedelta(minutes=break_end)
+            
+            # Handle cross-midnight breaks properly
+            base_dt = datetime.datetime.fromisoformat(f"{date}T00:00")
+            worker_shift_start, worker_shift_end = shift_bounds[w.id]
+            
+            # For night shift workers (00:00-08:00), breaks should be next day
+            if worker_shift_start == 0 and worker_shift_end <= 8 * 60:  # Night shift
+                start_dt = base_dt + datetime.timedelta(days=1, minutes=break_start)
+                end_dt = base_dt + datetime.timedelta(days=1, minutes=break_end)
+            elif worker_shift_end > 24 * 60:  # Other overnight shifts
+                # For evening shifts, breaks might be same day or next day
+                if break_start >= 16 * 60:  # Break after 16:00, same day
+                    start_dt = base_dt + datetime.timedelta(minutes=break_start)
+                    end_dt = base_dt + datetime.timedelta(minutes=break_end)
+                else:  # Break before 16:00, next day
+                    start_dt = base_dt + datetime.timedelta(days=1, minutes=break_start)
+                    end_dt = base_dt + datetime.timedelta(days=1, minutes=break_end)
+            else:
+                # Regular shift breaks
+                start_dt = base_dt + datetime.timedelta(minutes=break_start)
+                end_dt = base_dt + datetime.timedelta(minutes=break_end)
+            
+            # Special logging for Charlie Lee breaks
+            if w.id == "I7J8K9L":
+                logger.info(f"🔍 Charlie Lee break: break_start={break_start}, break_end={break_end}")
+                logger.info(f"   Is night shift: {worker_shift_start == 0 and worker_shift_end <= 8 * 60}")
+                logger.info(f"   Break timestamps: {start_dt.isoformat()} to {end_dt.isoformat()}")
             assignments.append(Assignment(
                 worker_id=w.id,
                 task_id="0",
