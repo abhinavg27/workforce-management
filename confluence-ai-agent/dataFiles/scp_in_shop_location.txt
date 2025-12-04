@@ -1,5 +1,0 @@
-test1,rfcfukuoka
-test2,rfcnarashino
-test3,rfcnarashino
-auc-yamanoraisu,rfcnarashino
-test5,rfcnarashino
