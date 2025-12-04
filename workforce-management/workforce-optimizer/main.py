@@ -69,7 +69,7 @@ async def optimize(req: OptimizeRequest, request: Request):
     for t in req.tasks:
         possible_workers = [w for w in req.workers if t.skill_id in w.skills]
         if not possible_workers:
-            logger.warning(f"Task {t.id} ('{t.name}') cannot be assigned: no worker has required skill_id {t.skill_id}.")
+            # logger.warning(f"Task {t.id} ('{t.name}') cannot be assigned: no worker has required skill_id {t.skill_id}.")
             continue
         for w in possible_workers:
             # Try to get productivity for this skill
@@ -102,13 +102,12 @@ async def optimize(req: OptimizeRequest, request: Request):
         # Pretty print parsed input
         logger.info("Parsed input - date: %s", req.date)
         logger.info("Parsed input - workers:")
-        for w in req.workers:
-            logger.info("  Worker: id=%s, name=%s, skills=%s, productivity=%s, shift_start=%s, shift_end=%s, break_minutes=%s",
-                        w.id, w.name, w.skills, w.productivity, w.shift_start, w.shift_end, w.break_minutes)
+        #for w in req.workers:
+        #    logger.info("  Worker: id=%s, name=%s, skills=%s, productivity=%s, shift_start=%s, shift_end=%s, break_minutes=%s",
+        #                w.id, w.name, w.skills, w.productivity, w.shift_start, w.shift_end, w.break_minutes)
         logger.info("Parsed input - tasks:")
-        for t in req.tasks:
-            logger.info("  Task: id=%s, name=%s, skill_id=%s, priority=%s, units=%s, dependencies=%s",
-                        t.id, t.name, t.skill_id, t.priority, t.units, t.dependencies)
+        # for t in req.tasks:
+            #logger.info("  Task: id=%s, name=%s, skill_id=%s, priority=%s, units=%s, dependencies=%s", t.id, t.name, t.skill_id, t.priority, t.units, t.dependencies)
     except Exception as e:
         logger.warning(f"Could not log request body: {e}")
     # Real CP-SAT implementation for workforce assignment optimization
@@ -148,7 +147,7 @@ async def optimize(req: OptimizeRequest, request: Request):
     for t in req.tasks:
         for w in req.workers:
             if t.skill_id not in w.skills:
-                logger.info(f"Worker {w.id} ('{w.name}') does not have skill {t.skill_id} for task {t.id} ('{t.name}')")
+                # logger.info(f"Worker {w.id} ('{w.name}') does not have skill {t.skill_id} for task {t.id} ('{t.name}')")
                 continue
             prod = None
             for key in [str(t.skill_id), t.skill_id, int(t.skill_id)]:
@@ -161,7 +160,7 @@ async def optimize(req: OptimizeRequest, request: Request):
             shift_start_min, shift_end_min = shift_bounds[w.id]
             max_units = math.floor(prod * ((shift_end_min - shift_start_min - w.break_minutes) / 60.0))
             if max_units <= 0:
-                logger.warning(f"Worker {w.id} ('{w.name}') cannot work any units for skill {t.skill_id} in shift.")
+                # logger.warning(f"Worker {w.id} ('{w.name}') cannot work any units for skill {t.skill_id} in shift.")
                 continue
             # Allow splitting: units assigned to this worker for this task
             split_units = model.NewIntVar(0, min(t.units, max_units), f"units_t{t.id}_w{w.id}")
@@ -182,7 +181,7 @@ async def optimize(req: OptimizeRequest, request: Request):
             # Enforce: if presence==1 then split_units>0, if presence==0 then split_units==0
             model.Add(split_units > 0).OnlyEnforceIf(presence)
             model.Add(split_units == 0).OnlyEnforceIf(presence.Not())
-            logger.info(f"Productivity for task {t.id} ('{t.name}') with worker {w.id} ('{w.name}'): {prod} units/hour, start={start}, end={end}, split_units={split_units}, duration={duration}, presence={presence}, interval={interval}")
+            #logger.info(f"Productivity for task {t.id} ('{t.name}') with worker {w.id} ('{w.name}'): {prod} units/hour, start={start}, end={end}, split_units={split_units}, duration={duration}, presence={presence}, interval={interval}")
 
     # Diagnostics: If no intervals created, log reason
     if not intervals:
@@ -298,5 +297,5 @@ async def optimize(req: OptimizeRequest, request: Request):
     # Log the response before sending to client
     # Pretty print using json.dumps for logging
     import json
-    logger.info("Optimize API response: %s", json.dumps(response.dict(), indent=2))
+    # logger.info("Optimize API response: %s", json.dumps(response.dict(), indent=2))
     return response
