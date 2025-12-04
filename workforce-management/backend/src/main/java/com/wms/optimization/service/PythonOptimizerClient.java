@@ -40,9 +40,11 @@ public class PythonOptimizerClient {
         req.put("workers", workers.stream().map(w -> {
             // Build productivity map, keeping max productivity for duplicate skillIds, keys as Integer
             Map<Integer, Integer> productivityMap = new HashMap<>();
+            Map<Integer, Integer> skillLevelMap = new HashMap<>();
             for (SkillInfo s : w.getSkills()) {
                 Integer key = s.getSkillId();
                 productivityMap.merge(key, s.getProductivity(), Math::max);
+                skillLevelMap.merge(key, s.getSkillLevel(), Math::max);
             }
             // Find shift for the correct day of week (robust to abbreviations and case)
             String todayDayOfWeek = date.getDayOfWeek().toString(); // e.g. "WEDNESDAY"
@@ -62,6 +64,7 @@ public class PythonOptimizerClient {
                     "name", w.getWorkerName(),
                     "skills", w.getSkills().stream().map(SkillInfo::getSkillId).collect(Collectors.toList()),
                     "productivity", productivityMap,
+                    "skill_levels", skillLevelMap,
                     "shift_start", shiftStart,
                     "shift_end", shiftEnd,
                     "break_minutes", 60
@@ -145,7 +148,7 @@ public class PythonOptimizerClient {
                 // fallback: use first shift if none match
                 shiftsForDay.add(w.getShifts().get(0));
             }
-            result.add(new WorkerAssignmentScheduleDTO(w.getWorkerId(), w.getWorkerName(), list, shiftsForDay));
+            result.add(new WorkerAssignmentScheduleDTO(w.getWorkerId(), w.getWorkerName(), list, shiftsForDay, w.getSkills()));
         }
         return result;
     }

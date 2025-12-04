@@ -65,6 +65,14 @@ public class AssignmentOptimizationController {
         // For GET, call the same optimize logic as POST, but do not delete/insert assignments
         // For GET, use shift info from assignment table
         List<Assignment> assignments = assignmentMapper.selectAllAssignments();
+        
+        // Fetch all workers with skills for efficient lookup
+        List<Worker> allWorkers = workerMapper.selectAllWorkersWithDetails();
+        Map<String, Worker> workerDetailsMap = new HashMap<>();
+        for (Worker w : allWorkers) {
+            workerDetailsMap.put(w.getWorkerId(), w);
+        }
+        
         // Group assignments by worker
         Map<String, WorkerAssignmentScheduleDTO> workerMap = new LinkedHashMap<>();
         for (Assignment a : assignments) {
@@ -82,7 +90,11 @@ public class AssignmentOptimizationController {
                 if (shift != null) {
                     shifts.add(shift);
                 }
-                workerSchedule = new WorkerAssignmentScheduleDTO(a.getWorkerId(), a.getWorkerName(), new ArrayList<>(), shifts);
+                // Get worker skills from the lookup map
+                Worker workerDetails = workerDetailsMap.get(a.getWorkerId());
+                List<com.wms.optimization.entity.SkillInfo> workerSkills = workerDetails != null ? workerDetails.getSkills() : new ArrayList<>();
+                
+                workerSchedule = new WorkerAssignmentScheduleDTO(a.getWorkerId(), a.getWorkerName(), new ArrayList<>(), shifts, workerSkills);
                 workerMap.put(a.getWorkerId(), workerSchedule);
             } else {
                 // Add shift if not already present
@@ -110,31 +122,8 @@ public class AssignmentOptimizationController {
             );
             workerSchedule.getAssignments().add(dto);
         }
-        // Filter out workers with night shifts (e.g., shift start >= 20:00 or end <= 06:00)
-        List<WorkerAssignmentScheduleDTO> schedules = new ArrayList<>();
-        for (WorkerAssignmentScheduleDTO schedule : workerMap.values()) {
-            boolean hasNightShift = false;
-            if (schedule.getShifts() != null) {
-                for (com.wms.optimization.entity.ShiftInfo shift : schedule.getShifts()) {
-                    String start = shift.getStartTime();
-                    String end = shift.getEndTime();
-                    try {
-                        int startHour = Integer.parseInt(start.split(":")[0]);
-                        int endHour = Integer.parseInt(end.split(":")[0]);
-                        // Night shift: start at or after 20:00 (8pm), end at or before 06:00 (6am), or shift fully between 00:00 and 08:00
-                        if (startHour >= 20 || endHour <= 6 || (startHour >= 0 && endHour <= 8)) {
-                            hasNightShift = true;
-                            break;
-                        }
-                    } catch (Exception e) {
-                        // If parsing fails, do not filter out
-                    }
-                }
-            }
-            if (!hasNightShift) {
-                schedules.add(schedule);
-            }
-        }
+        // Show all workers regardless of shift
+        List<WorkerAssignmentScheduleDTO> schedules = new ArrayList<>(workerMap.values());
         // Unassigned tasks
         List<UnassignedTaskDTO> unassignedTasks = unassignedTaskMapper.selectAllUnassignedTasks();
         // Map task IDs to names for unassigned tasks
@@ -165,29 +154,9 @@ public class AssignmentOptimizationController {
         List<Worker> workers = workerMapper.selectAllWorkersWithDetails();
         List<Assignment> assignments = new ArrayList<>();
         AssignmentOptimizationResultDTO result = optimizationService.optimizeAssignments(tasks, workers, assignments);
-        // Filter out workers with night shifts (start >= 20:00, end <= 06:00, or fully between 00:00 and 08:00) for both DB and response
+        // Process all workers regardless of shift
         List<WorkerAssignmentScheduleDTO> filteredSchedules = new ArrayList<>();
         for (WorkerAssignmentScheduleDTO schedule : result.getSchedules()) {
-            boolean hasNightShift = false;
-            if (schedule.getShifts() != null) {
-                for (com.wms.optimization.entity.ShiftInfo shift : schedule.getShifts()) {
-                    String start = shift.getStartTime();
-                    String end = shift.getEndTime();
-                    try {
-                        int startHour = Integer.parseInt(start.split(":")[0]);
-                        int endHour = Integer.parseInt(end.split(":")[0]);
-                        if (startHour >= 20 || endHour <= 6 || (startHour >= 0 && endHour <= 8)) {
-                            hasNightShift = true;
-                            break;
-                        }
-                    } catch (Exception e) {
-                        // If parsing fails, do not filter out
-                    }
-                }
-            }
-            if (hasNightShift) {
-                continue;
-            }
             // Get shift info for this worker for the day
             String shiftName = null;
             String shiftStart = null;
